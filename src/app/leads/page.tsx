@@ -58,7 +58,8 @@ export default async function LeadsPage() {
     .filter(Boolean);
 
   const visibleLeads = leads.filter((lead) => {
-    const cityMatch = allowedCities.includes(lead.city.toLowerCase());
+    // If no service cities configured, show all leads
+    const cityMatch = allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
     return !isExpired(lead.createdAt) && cityMatch;
   });
 
