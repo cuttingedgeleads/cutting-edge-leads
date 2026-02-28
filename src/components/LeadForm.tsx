@@ -60,6 +60,70 @@ export function LeadForm() {
   const photoInputRef = useRef<LeadPhotoInputRef>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [quickPasteText, setQuickPasteText] = useState("");
+
+  function parseQuickPaste(text: string) {
+    if (!text.trim()) return;
+
+    // Regex patterns
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
+    const phoneRegex = /(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|\d{10})/;
+    const addressRegex = /\d+\s+[A-Za-z0-9\s.,#-]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)(?:\s+[A-Za-z0-9#-]+)?(?:,\s*[A-Za-z\s]+)?/i;
+    
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    
+    // Extract email
+    const emailMatch = text.match(emailRegex);
+    if (emailMatch) {
+      const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
+      if (emailInput) emailInput.value = emailMatch[1];
+    }
+
+    // Extract phone
+    const phoneMatch = text.match(phoneRegex);
+    if (phoneMatch) {
+      const phoneInput = document.querySelector('input[name="phone"]') as HTMLInputElement;
+      if (phoneInput) {
+        // Format phone number
+        const digits = phoneMatch[1].replace(/\D/g, '');
+        const formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+        phoneInput.value = formatted;
+      }
+    }
+
+    // Extract address
+    const addressMatch = text.match(addressRegex);
+    if (addressMatch) {
+      const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
+      if (addressInput) {
+        const fullAddress = addressMatch[0];
+        // Try to split city from address
+        const parts = fullAddress.split(',');
+        if (parts.length > 1) {
+          addressInput.value = parts[0].trim();
+          const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+          if (cityInput) cityInput.value = parts[1].trim();
+        } else {
+          addressInput.value = fullAddress;
+        }
+      }
+    }
+
+    // Extract name (first line that's not email/phone/address)
+    for (const line of lines) {
+      if (!emailRegex.test(line) && !phoneRegex.test(line) && !addressRegex.test(line)) {
+        // Check if it looks like a name (contains letters and is reasonably short)
+        if (/^[A-Za-z\s'-]+$/.test(line) && line.length < 50) {
+          const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
+          if (nameInput) nameInput.value = line;
+          break;
+        }
+      }
+    }
+
+    // Clear the quick paste textarea
+    setQuickPasteText("");
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -150,6 +214,36 @@ export function LeadForm() {
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+      {/* Quick Paste Section */}
+      <div className="sm:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <label className="text-sm font-medium text-blue-900">
+          ⚡ Quick Paste
+          <span className="ml-2 text-xs font-normal text-blue-700">
+            Paste contact info and we'll auto-fill the form
+          </span>
+        </label>
+        <textarea
+          value={quickPasteText}
+          onChange={(e) => setQuickPasteText(e.target.value)}
+          onPaste={(e) => {
+            // Small delay to ensure paste content is in textarea
+            setTimeout(() => {
+              parseQuickPaste(e.currentTarget.value);
+            }, 10);
+          }}
+          className="mt-2 w-full rounded-lg border border-blue-300 px-3 py-2 text-sm"
+          rows={4}
+          placeholder="Paste contact info here, e.g.:&#10;Logan Harch&#10;(504) 358-4856&#10;5201 Meadowdale St, Metairie&#10;loganharch@gmail.com"
+        />
+        <button
+          type="button"
+          onClick={() => parseQuickPaste(quickPasteText)}
+          className="mt-2 px-4 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
+        >
+          Parse & Fill Form
+        </button>
+      </div>
+
       <div>
         <label className="text-sm font-medium">Name</label>
         <input
