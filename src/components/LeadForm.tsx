@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
-import { LeadPhotoInput } from "@/components/LeadPhotoInput";
+import { LeadPhotoInput, LeadPhotoInputRef } from "@/components/LeadPhotoInput";
 
 const MIN_PRICE = 20;
 
 export function LeadForm() {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const photoInputRef = useRef<LeadPhotoInputRef>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,6 +22,12 @@ export function LeadForm() {
     try {
       const form = event.currentTarget;
       const formData = new FormData(form);
+      
+      // Manually add photos from the photo input component
+      const photos = photoInputRef.current?.getFiles() || [];
+      photos.forEach((file) => {
+        formData.append("photos", file);
+      });
 
       const response = await fetch("/api/leads/create", {
         method: "POST",
@@ -33,9 +41,10 @@ export function LeadForm() {
         return;
       }
 
-      // Success - refresh the page to show the new lead
-      router.refresh();
+      // Success - refresh the page and clear form
+      photoInputRef.current?.clear();
       form.reset();
+      router.refresh();
     } catch (err) {
       console.error("Submit error:", err);
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -45,7 +54,7 @@ export function LeadForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
+    <form ref={formRef} onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2">
       <div>
         <label className="text-sm font-medium">Name</label>
         <input
@@ -128,7 +137,7 @@ export function LeadForm() {
       </div>
       <div className="sm:col-span-2">
         <label className="text-sm font-medium">Photos</label>
-        <LeadPhotoInput />
+        <LeadPhotoInput ref={photoInputRef} />
       </div>
       
       {error && (

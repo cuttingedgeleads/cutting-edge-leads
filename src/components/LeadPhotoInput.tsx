@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, forwardRef, useImperativeHandle } from "react";
 
 type Preview = {
   id: string;
@@ -9,60 +9,48 @@ type Preview = {
   file: File;
 };
 
-export function LeadPhotoInput() {
+export type LeadPhotoInputRef = {
+  getFiles: () => File[];
+  clear: () => void;
+};
+
+export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoInput(_, ref) {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const combinedInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<Preview[]>([]);
-  const previewsRef = useRef<Preview[]>([]);
 
-  const syncHiddenInput = useCallback((files: File[]) => {
-    if (!combinedInputRef.current) return;
-    const dataTransfer = new DataTransfer();
-    files.forEach((file) => dataTransfer.items.add(file));
-    combinedInputRef.current.files = dataTransfer.files;
+  useImperativeHandle(ref, () => ({
+    getFiles: () => previews.map((p) => p.file),
+    clear: () => {
+      previews.forEach((p) => URL.revokeObjectURL(p.url));
+      setPreviews([]);
+    },
+  }), [previews]);
+
+  const addFiles = useCallback((fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const newPreviews = Array.from(fileList).map((file) => ({
+      id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+      url: URL.createObjectURL(file),
+      name: file.name || "photo",
+      file,
+    }));
+    setPreviews((prev) => [...prev, ...newPreviews]);
   }, []);
 
-  const addFiles = useCallback(
-    (fileList: FileList | null) => {
-      if (!fileList || fileList.length === 0) return;
-      const next = Array.from(fileList).map((file) => ({
-        id: `${file.name}-${file.size}-${file.lastModified}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`,
-        url: URL.createObjectURL(file),
-        name: file.name || "photo",
-        file,
-      }));
-      setPreviews((prev) => {
-        const updated = [...prev, ...next];
-        previewsRef.current = updated;
-        syncHiddenInput(updated.map((preview) => preview.file));
-        return updated;
-      });
-    },
-    [syncHiddenInput]
-  );
+  const removePreview = useCallback((id: string) => {
+    setPreviews((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.url);
+      return prev.filter((p) => p.id !== id);
+    });
+  }, []);
 
   useEffect(() => {
     return () => {
-      previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url));
+      previews.forEach((p) => URL.revokeObjectURL(p.url));
     };
   }, []);
-
-  const removePreview = useCallback(
-    (id: string) => {
-      setPreviews((prev) => {
-        const target = prev.find((preview) => preview.id === id);
-        if (target) URL.revokeObjectURL(target.url);
-        const updated = prev.filter((preview) => preview.id !== id);
-        previewsRef.current = updated;
-        syncHiddenInput(updated.map((preview) => preview.file));
-        return updated;
-      });
-    },
-    [syncHiddenInput]
-  );
-
-  const hasPreviews = previews.length > 0;
 
   return (
     <div className="mt-1 rounded-lg border px-3 py-3 space-y-3">
@@ -88,11 +76,10 @@ export function LeadPhotoInput() {
         type="file"
         accept="image/*"
         capture="environment"
-        multiple
         className="hidden"
-        onChange={(event) => {
-          addFiles(event.currentTarget.files);
-          event.currentTarget.value = "";
+        onChange={(e) => {
+          addFiles(e.currentTarget.files);
+          e.currentTarget.value = "";
         }}
       />
       <input
@@ -101,20 +88,13 @@ export function LeadPhotoInput() {
         accept="image/*"
         multiple
         className="hidden"
-        onChange={(event) => {
-          addFiles(event.currentTarget.files);
-          event.currentTarget.value = "";
+        onChange={(e) => {
+          addFiles(e.currentTarget.files);
+          e.currentTarget.value = "";
         }}
       />
-      <input
-        ref={combinedInputRef}
-        name="photos"
-        type="file"
-        multiple
-        className="hidden"
-      />
 
-      {hasPreviews ? (
+      {previews.length > 0 ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {previews.map((preview) => (
             <div
@@ -145,4 +125,4 @@ export function LeadPhotoInput() {
       )}
     </div>
   );
-}
+});
