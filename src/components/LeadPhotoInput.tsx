@@ -3,29 +3,54 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Preview = {
+  id: string;
   url: string;
   name: string;
+  file: File;
 };
 
 export function LeadPhotoInput() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const submitInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<Preview[]>([]);
 
-  const collectFiles = useCallback(() => {
-    const cameraFiles = Array.from(cameraInputRef.current?.files || []);
-    const uploadFiles = Array.from(uploadInputRef.current?.files || []);
-    return [...cameraFiles, ...uploadFiles];
+  const syncSubmitFiles = useCallback((files: File[]) => {
+    const dataTransfer = new DataTransfer();
+    files.forEach((file) => dataTransfer.items.add(file));
+    if (submitInputRef.current) {
+      submitInputRef.current.files = dataTransfer.files;
+    }
   }, []);
 
-  const updatePreviews = useCallback(() => {
-    const files = collectFiles();
-    const nextPreviews = files.map((file) => ({
-      url: URL.createObjectURL(file),
-      name: file.name || "photo",
-    }));
-    setPreviews(nextPreviews);
-  }, [collectFiles]);
+  const addFiles = useCallback((files: File[]) => {
+    if (files.length === 0) return;
+    setPreviews((current) => {
+      const next = [...current];
+      files.forEach((file) => {
+        next.push({
+          id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+          url: URL.createObjectURL(file),
+          name: file.name || "photo",
+          file,
+        });
+      });
+      syncSubmitFiles(next.map((preview) => preview.file));
+      return next;
+    });
+  }, [syncSubmitFiles]);
+
+  const removePreview = useCallback((id: string) => {
+    setPreviews((current) => {
+      const preview = current.find((item) => item.id === id);
+      if (preview) {
+        URL.revokeObjectURL(preview.url);
+      }
+      const next = current.filter((item) => item.id !== id);
+      syncSubmitFiles(next.map((item) => item.file));
+      return next;
+    });
+  }, [syncSubmitFiles]);
 
   useEffect(() => {
     return () => {
@@ -55,32 +80,51 @@ export function LeadPhotoInput() {
       </div>
 
       <input
-        ref={cameraInputRef}
+        ref={submitInputRef}
         name="photos"
+        type="file"
+        multiple
+        className="hidden"
+        aria-hidden
+      />
+      <input
+        ref={cameraInputRef}
         type="file"
         accept="image/*"
         capture="environment"
         multiple
         className="hidden"
-        onChange={updatePreviews}
+        onChange={(event) => {
+          addFiles(Array.from(event.currentTarget.files || []));
+          event.currentTarget.value = "";
+        }}
       />
       <input
         ref={uploadInputRef}
-        name="photos"
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={updatePreviews}
+        onChange={(event) => {
+          addFiles(Array.from(event.currentTarget.files || []));
+          event.currentTarget.value = "";
+        }}
       />
 
       {hasPreviews ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {previews.map((preview, index) => (
+          {previews.map((preview) => (
             <div
-              key={`${preview.url}-${index}`}
+              key={preview.id}
               className="relative overflow-hidden rounded-lg border bg-slate-50"
             >
+              <button
+                type="button"
+                onClick={() => removePreview(preview.id)}
+                className="absolute right-1 top-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow"
+              >
+                Remove
+              </button>
               <img
                 src={preview.url}
                 alt={preview.name}
