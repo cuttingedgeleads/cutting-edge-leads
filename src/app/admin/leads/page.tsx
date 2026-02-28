@@ -6,122 +6,132 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
-import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
-import { LeadPhotoInput } from "@/components/LeadPhotoInput";
+import { LeadCreateForm } from "@/components/LeadCreateForm";
 import { sendNewLeadEmail } from "@/lib/email";
 
 const MIN_PRICE = 20;
 
-async function createLead(formData: FormData) {
+async function createLead(
+  _prevState: { error: string },
+  formData: FormData
+): Promise<{ error: string }> {
   "use server";
 
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const jobType = String(formData.get("jobType") || "").trim();
-  const description = String(formData.get("description") || "").trim();
-  const address = String(formData.get("address") || "").trim();
-  const city = String(formData.get("city") || "").trim();
-  const state = String(formData.get("state") || "").trim();
-  const zip = String(formData.get("zip") || "").trim();
-  const price = Number(formData.get("price") || 0);
-  const photoFiles = formData.getAll("photos").filter((file): file is File => {
-    return file instanceof File && file.size > 0;
-  });
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (
-    !name ||
-    !email ||
-    !emailRegex.test(email) ||
-    !jobType ||
-    !description ||
-    !address ||
-    !city ||
-    !state ||
-    !zip ||
-    price < MIN_PRICE
-  ) {
-    return;
-  }
-
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  const shouldWriteToDisk = !process.env.VERCEL;
-  if (shouldWriteToDisk) {
-    await mkdir(uploadsDir, { recursive: true });
-  }
-
-  const photos = await Promise.all(
-    photoFiles.map(async (file) => {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      if (shouldWriteToDisk) {
-        try {
-          const extension = path.extname(file.name || "");
-          const filename = `${randomUUID()}${extension || ".jpg"}`;
-          await writeFile(path.join(uploadsDir, filename), buffer);
-          return `/uploads/${filename}`;
-        } catch (error) {
-          console.error("Failed to store lead photo on disk, falling back to inline data.", error);
-        }
-      }
-
-      const mimeType = file.type || "image/jpeg";
-      return `data:${mimeType};base64,${buffer.toString("base64")}`;
-    })
-  );
-
-  const lead = await prisma.lead.create({
-    data: {
-      name,
-      email,
-      jobType,
-      description,
-      address,
-      city,
-      state,
-      zip,
-      price,
-      createdAt: new Date(),
-      photos: {
-        create: photos.map((url) => ({ url })),
-      },
-    },
-    include: { photos: true },
-  });
-
-  const normalizedCity = city.toLowerCase();
-  const matchingContractors = await prisma.user.findMany({
-    where: {
-      role: "CONTRACTOR",
-      serviceCities: {
-        contains: normalizedCity,
-      },
-    },
-  });
-
-  const recipients = matchingContractors
-    .filter((contractor) =>
-      contractor.serviceCities
-        .split(",")
-        .map((entry) => entry.trim().toLowerCase())
-        .includes(normalizedCity)
-    )
-    .map((contractor) => contractor.email);
-
-  if (recipients.length > 0) {
-    const photoUrl = lead.photos[0]?.url || null;
-    await sendNewLeadEmail({
-      to: recipients,
-      loginUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/login`,
-      jobType: lead.jobType,
-      city: lead.city,
-      zip: lead.zip,
-      description: lead.description,
-      photoUrl: photoUrl && photoUrl.startsWith("data:") ? null : photoUrl,
+  try {
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const jobType = String(formData.get("jobType") || "").trim();
+    const description = String(formData.get("description") || "").trim();
+    const address = String(formData.get("address") || "").trim();
+    const city = String(formData.get("city") || "").trim();
+    const state = String(formData.get("state") || "").trim();
+    const zip = String(formData.get("zip") || "").trim();
+    const price = Number(formData.get("price") || 0);
+    const photoFiles = formData.getAll("photos").filter((file): file is File => {
+      return file instanceof File && file.size > 0;
     });
-  }
 
-  redirect("/admin/leads");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (
+      !name ||
+      !email ||
+      !emailRegex.test(email) ||
+      !jobType ||
+      !description ||
+      !address ||
+      !city ||
+      !state ||
+      !zip ||
+      price < MIN_PRICE
+    ) {
+      return { error: "Please complete all fields with a valid email and price." };
+    }
+
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    const shouldWriteToDisk = !process.env.VERCEL;
+    if (shouldWriteToDisk) {
+      await mkdir(uploadsDir, { recursive: true });
+    }
+
+    const photos = await Promise.all(
+      photoFiles.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        if (shouldWriteToDisk) {
+          try {
+            const extension = path.extname(file.name || "");
+            const filename = `${randomUUID()}${extension || ".jpg"}`;
+            await writeFile(path.join(uploadsDir, filename), buffer);
+            return `/uploads/${filename}`;
+          } catch (error) {
+            console.error(
+              "Failed to store lead photo on disk, falling back to inline data.",
+              error
+            );
+          }
+        }
+
+        const mimeType = file.type || "image/jpeg";
+        return `data:${mimeType};base64,${buffer.toString("base64")}`;
+      })
+    );
+
+    const lead = await prisma.lead.create({
+      data: {
+        name,
+        email,
+        jobType,
+        description,
+        address,
+        city,
+        state,
+        zip,
+        price,
+        createdAt: new Date(),
+        photos: {
+          create: photos.map((url) => ({ url })),
+        },
+      },
+      include: { photos: true },
+    });
+
+    const normalizedCity = city.toLowerCase();
+    const matchingContractors = await prisma.user.findMany({
+      where: {
+        role: "CONTRACTOR",
+        serviceCities: {
+          contains: normalizedCity,
+        },
+      },
+    });
+
+    const recipients = matchingContractors
+      .filter((contractor) =>
+        contractor.serviceCities
+          .split(",")
+          .map((entry) => entry.trim().toLowerCase())
+          .includes(normalizedCity)
+      )
+      .map((contractor) => contractor.email);
+
+    if (recipients.length > 0) {
+      const photoUrl = lead.photos[0]?.url || null;
+      await sendNewLeadEmail({
+        to: recipients,
+        loginUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/login`,
+        jobType: lead.jobType,
+        city: lead.city,
+        zip: lead.zip,
+        description: lead.description,
+        photoUrl: photoUrl && photoUrl.startsWith("data:") ? null : photoUrl,
+      });
+    }
+
+    redirect("/admin/leads");
+  } catch (error) {
+    console.error("Create lead failed", error);
+    return { error: "Something went wrong while publishing the lead. Please try again." };
+  }
 }
 
 function isExpired(date: Date) {
@@ -152,104 +162,7 @@ export default async function AdminLeadsPage() {
         <AdminTabs />
         <section className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Create a lead</h2>
-          <form
-            action={createLead}
-            encType="multipart/form-data"
-            className="grid gap-4 sm:grid-cols-2"
-          >
-            <div>
-              <label className="text-sm font-medium">Name</label>
-              <input
-                name="name"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                placeholder="Customer name"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Email</label>
-              <input
-                name="email"
-                type="email"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                placeholder="customer@email.com"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Job type</label>
-              <select name="jobType" className="mt-1 w-full rounded-lg border px-3 py-2" required>
-                <option value="">Select a job type</option>
-                <option value="Grass Cutting">Grass Cutting</option>
-                <option value="Landscaping">Landscaping</option>
-                <option value="Grass and Landscaping Maintenance">
-                  Grass and Landscaping Maintenance
-                </option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Price (min ${MIN_PRICE})</label>
-              <input
-                name="price"
-                type="number"
-                min={MIN_PRICE}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Description</label>
-              <textarea
-                name="description"
-                rows={4}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Street address</label>
-              <AddressAutocomplete />
-            </div>
-            <div>
-              <label className="text-sm font-medium">City</label>
-              <input
-                name="city"
-                id="city"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">State</label>
-              <input
-                name="state"
-                id="state"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Zip</label>
-              <input
-                name="zip"
-                id="zip"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Photos</label>
-              <LeadPhotoInput />
-            </div>
-            <div className="sm:col-span-2">
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-slate-900 text-white py-2 font-medium"
-              >
-                Publish lead
-              </button>
-            </div>
-          </form>
+          <LeadCreateForm action={createLead} minPrice={MIN_PRICE} />
         </section>
 
         <section>
