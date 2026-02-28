@@ -7,6 +7,11 @@ declare module "next-auth" {
       role: "ADMIN" | "CONTRACTOR";
     } & DefaultSession["user"];
   }
+
+  interface User {
+    id: string;
+    role: "ADMIN" | "CONTRACTOR";
+  }
 }
 
 declare module "next-auth/jwt" {
