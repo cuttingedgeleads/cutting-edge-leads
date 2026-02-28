@@ -121,9 +121,10 @@ export function LeadPhotoInput() {
               <button
                 type="button"
                 onClick={() => removePreview(preview.id)}
-                className="absolute right-1 top-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow"
+                aria-label={`Remove ${preview.name}`}
+                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600/80 text-[12px] font-bold text-white shadow hover:bg-red-600"
               >
-                Remove
+                ×
               </button>
               <img
                 src={preview.url}
