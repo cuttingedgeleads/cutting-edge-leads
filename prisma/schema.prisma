@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CONTRACTOR
+}
+
+enum UnlockStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String                @id @default(cuid())
+  email        String                @unique
+  name         String
+  passwordHash String
+  role          Role                @default(CONTRACTOR)
+  serviceCities String              @default("")
+  createdAt     DateTime            @default(now())
+  unlocks       LeadUnlockRequest[] @relation("UserUnlocks")
+}
+
+model Lead {
+  id          String               @id @default(cuid())
+  jobType     String
+  description String
+  address     String
+  city        String
+  state       String
+  zip         String
+  price       Int
+  createdAt   DateTime             @default(now())
+  photos      LeadPhoto[]
+  unlocks     LeadUnlockRequest[]  @relation("LeadUnlocks")
+}
+
+model LeadPhoto {
+  id      String @id @default(cuid())
+  leadId  String
+  url     String
+  lead    Lead   @relation(fields: [leadId], references: [id])
+}
+
+model LeadUnlockRequest {
+  id           String       @id @default(cuid())
+  leadId       String
+  contractorId String
+  status       UnlockStatus @default(PENDING)
+  createdAt    DateTime     @default(now())
+  approvedAt   DateTime?
+
+  lead         Lead         @relation("LeadUnlocks", fields: [leadId], references: [id])
+  contractor   User         @relation("UserUnlocks", fields: [contractorId], references: [id])
+
+  @@unique([leadId, contractorId])
+}

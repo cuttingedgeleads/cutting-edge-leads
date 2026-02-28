@@ -1,0 +1,97 @@
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
+import { NavBar } from "@/components/NavBar";
+import { AdminTabs } from "@/components/AdminTabs";
+import { PhotoLightbox } from "@/components/PhotoLightbox";
+
+function isExpired(date: Date) {
+  const expiresAt = new Date(date);
+  expiresAt.setHours(expiresAt.getHours() + 24);
+  return new Date() > expiresAt;
+}
+
+export default async function ArchivedLeadsPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "ADMIN") redirect("/");
+
+  const leads = await prisma.lead.findMany({
+    include: {
+      photos: true,
+      unlocks: {
+        where: { status: "APPROVED" },
+        include: { contractor: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const archivedLeads = leads.filter((lead) => {
+    const approvedCount = lead.unlocks.length;
+    const expired = isExpired(lead.createdAt);
+    const soldOut = approvedCount >= 2;
+    return expired || soldOut;
+  });
+
+  return (
+    <div className="min-h-screen">
+      <NavBar name={session.user.name} role={session.user.role} />
+      <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
+        <AdminTabs />
+        <header>
+          <h2 className="text-xl font-semibold">Archived leads</h2>
+          <p className="text-sm text-slate-600">
+            Sold-out leads (2 unlocks) and expired/hidden leads for billing reference.
+          </p>
+        </header>
+
+        <div className="grid gap-4">
+          {archivedLeads.length === 0 ? (
+            <div className="bg-white rounded-xl border p-6 text-sm text-slate-600">
+              No archived leads yet.
+            </div>
+          ) : null}
+          {archivedLeads.map((lead) => (
+            <div key={lead.id} className="bg-white rounded-xl border p-4 space-y-3">
+              <div className="flex flex-wrap justify-between gap-2">
+                <div>
+                  <p className="font-semibold">{lead.jobType}</p>
+                  <p className="text-sm text-slate-600">
+                    {lead.address}, {lead.city}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold">${lead.price}</p>
+                  <p className="text-xs text-slate-500">
+                    Posted {lead.createdAt.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <PhotoLightbox photos={lead.photos} />
+              <div>
+                <p className="text-sm font-semibold">Purchases</p>
+                {lead.unlocks.length === 0 ? (
+                  <p className="text-sm text-slate-600">No purchases.</p>
+                ) : (
+                  <ul className="mt-2 space-y-1 text-sm text-slate-700">
+                    {lead.unlocks.map((unlock) => (
+                      <li key={unlock.id} className="flex flex-wrap justify-between gap-2">
+                        <span>
+                          {unlock.contractor.name} ({unlock.contractor.email})
+                        </span>
+                        <span className="text-slate-500">
+                          {unlock.approvedAt?.toLocaleString() || "Approved"} • ${lead.price}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}

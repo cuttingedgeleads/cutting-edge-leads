@@ -1,0 +1,163 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
+
+export type PhotoLightboxItem = {
+  id?: string;
+  url: string;
+  alt?: string;
+};
+
+type PhotoLightboxProps = {
+  photos: PhotoLightboxItem[];
+  thumbnailClassName?: string;
+  className?: string;
+};
+
+export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLightboxProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+  const previousBodyOverflow = useRef<string | null>(null);
+
+  const showNext = useCallback(() => {
+    setActiveIndex((current) => (current + 1) % photos.length);
+  }, [photos.length]);
+
+  const showPrev = useCallback(() => {
+    setActiveIndex((current) => (current - 1 + photos.length) % photos.length);
+  }, [photos.length]);
+
+  const openAt = useCallback((index: number) => {
+    setActiveIndex(index);
+    setIsOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    previousBodyOverflow.current = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      if (previousBodyOverflow.current !== null) {
+        document.body.style.overflow = previousBodyOverflow.current;
+      }
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+      if (event.key === "ArrowRight") showNext();
+      if (event.key === "ArrowLeft") showPrev();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, showNext, showPrev]);
+
+  if (!photos || photos.length === 0) return null;
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.touches[0]?.clientX ?? null;
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
+    const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
+    const deltaX = endX - touchStartX.current;
+    const deltaY = endY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+
+    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      if (deltaX > 0) {
+        showPrev();
+      } else {
+        showNext();
+      }
+    }
+  };
+
+  const activePhoto = photos[activeIndex];
+
+  return (
+    <>
+      <div className={className || "flex flex-wrap gap-2"}>
+        {photos.map((photo, index) => (
+          <button
+            key={photo.id ?? `${photo.url}-${index}`}
+            type="button"
+            onClick={() => openAt(index)}
+            className="focus:outline-none"
+            aria-label="Open photo"
+          >
+            <img
+              src={photo.url}
+              alt={photo.alt || "Lead photo"}
+              className={
+                thumbnailClassName ||
+                "h-20 w-20 rounded-lg object-cover border transition hover:opacity-90"
+              }
+            />
+          </button>
+        ))}
+      </div>
+
+      {isOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6"
+          onClick={() => setIsOpen(false)}
+        >
+          <div
+            className="relative flex max-h-full w-full max-w-4xl items-center justify-center"
+            onClick={(event) => event.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <img
+              src={activePhoto.url}
+              alt={activePhoto.alt || "Lead photo"}
+              className="max-h-[85vh] w-auto max-w-full rounded-xl object-contain"
+            />
+
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="absolute right-3 top-3 rounded-full bg-black/60 p-2 text-white shadow hover:bg-black/80"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            {photos.length > 1 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={showPrev}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white shadow hover:bg-black/80"
+                  aria-label="Previous photo"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={showNext}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-2 text-white shadow hover:bg-black/80"
+                  aria-label="Next photo"
+                >
+                  ›
+                </button>
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
+                  {activeIndex + 1} / {photos.length}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
