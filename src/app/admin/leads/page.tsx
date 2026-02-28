@@ -128,7 +128,17 @@ async function createLead(
     }
 
     redirect("/admin/leads");
-  } catch (error) {
+  } catch (error: unknown) {
+    // redirect() throws a special error - rethrow it
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest?: string }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
     console.error("Create lead failed", error);
     return { error: "Something went wrong while publishing the lead. Please try again." };
   }
