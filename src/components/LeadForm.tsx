@@ -6,6 +6,53 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { LeadPhotoInput, LeadPhotoInputRef } from "@/components/LeadPhotoInput";
 
 const MIN_PRICE = 20;
+const MAX_IMAGE_SIZE = 800; // Max width/height in pixels
+const IMAGE_QUALITY = 0.7; // JPEG quality (0-1)
+
+// Compress image using canvas
+async function compressImage(file: File): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      
+      // Scale down if needed
+      if (width > MAX_IMAGE_SIZE || height > MAX_IMAGE_SIZE) {
+        if (width > height) {
+          height = (height / width) * MAX_IMAGE_SIZE;
+          width = MAX_IMAGE_SIZE;
+        } else {
+          width = (width / height) * MAX_IMAGE_SIZE;
+          height = MAX_IMAGE_SIZE;
+        }
+      }
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file); // Fallback to original if compression fails
+          }
+        },
+        "image/jpeg",
+        IMAGE_QUALITY
+      );
+    };
+    img.onerror = () => resolve(file); // Fallback to original on error
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 export function LeadForm() {
   const router = useRouter();
@@ -31,18 +78,20 @@ export function LeadForm() {
         return;
       }
       
-      // Step 2: Add photos with unique names
+      // Step 2: Compress and add photos
       try {
         const photos = photoInputRef.current?.getFiles() || [];
-        photos.forEach((file, index) => {
-          // Create unique filename to avoid duplicates
-          const ext = file.name.split('.').pop() || 'jpg';
-          const uniqueName = `photo-${Date.now()}-${index}.${ext}`;
-          const renamedFile = new File([file], uniqueName, { type: file.type });
+        for (let i = 0; i < photos.length; i++) {
+          const file = photos[i];
+          // Compress the image
+          const compressed = await compressImage(file);
+          // Create unique filename
+          const uniqueName = `photo-${Date.now()}-${i}.jpg`;
+          const renamedFile = new File([compressed], uniqueName, { type: "image/jpeg" });
           formData.append("photos", renamedFile);
-        });
+        }
       } catch (e) {
-        // If File constructor fails, just use original files
+        // If compression fails, try without compression
         try {
           const photos = photoInputRef.current?.getFiles() || [];
           photos.forEach((file) => {
