@@ -14,6 +14,7 @@ export function LeadPhotoInput() {
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const submitInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<Preview[]>([]);
+  const previewsRef = useRef<Preview[]>([]);
 
   const syncSubmitFiles = useCallback((files: File[]) => {
     const dataTransfer = new DataTransfer();
@@ -53,10 +54,14 @@ export function LeadPhotoInput() {
   }, [syncSubmitFiles]);
 
   useEffect(() => {
-    return () => {
-      previews.forEach((preview) => URL.revokeObjectURL(preview.url));
-    };
+    previewsRef.current = previews;
   }, [previews]);
+
+  useEffect(() => {
+    return () => {
+      previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url));
+    };
+  }, []);
 
   const hasPreviews = previews.length > 0;
 
