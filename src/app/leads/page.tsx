@@ -125,7 +125,7 @@ export default async function LeadsPage() {
                     <form action={requestUnlock}>
                       <input type="hidden" name="leadId" value={lead.id} />
                       <input type="hidden" name="contractorId" value={session.user.id} />
-                      <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">
+                      <button type="submit" className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">
                         Request unlock
                       </button>
                     </form>
