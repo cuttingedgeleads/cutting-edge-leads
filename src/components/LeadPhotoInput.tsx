@@ -26,7 +26,6 @@ export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoIn
     },
   }), [photos]);
 
-  // Cleanup preview URLs on unmount
   useEffect(() => {
     return () => {
       photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -36,22 +35,12 @@ export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoIn
   function addFiles(fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
     
-    const newPhotos: PhotoItem[] = Array.from(fileList).map((originalFile) => {
-      // Create a unique filename to avoid duplicate name issues
-      const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-      const ext = originalFile.name.split('.').pop() || 'jpg';
-      const newFileName = `photo-${uniqueId}.${ext}`;
-      
-      // Create a new File with the unique name
-      const renamedFile = new File([originalFile], newFileName, {
-        type: originalFile.type,
-        lastModified: originalFile.lastModified,
-      });
-      
+    const newPhotos: PhotoItem[] = Array.from(fileList).map((file) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
       return {
-        id: uniqueId,
-        file: renamedFile,
-        previewUrl: URL.createObjectURL(originalFile),
+        id,
+        file, // Keep original file, don't rename
+        previewUrl: URL.createObjectURL(file),
       };
     });
     

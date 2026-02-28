@@ -31,15 +31,27 @@ export function LeadForm() {
         return;
       }
       
-      // Step 2: Add photos
+      // Step 2: Add photos with unique names
       try {
         const photos = photoInputRef.current?.getFiles() || [];
-        photos.forEach((file) => {
-          formData.append("photos", file);
+        photos.forEach((file, index) => {
+          // Create unique filename to avoid duplicates
+          const ext = file.name.split('.').pop() || 'jpg';
+          const uniqueName = `photo-${Date.now()}-${index}.${ext}`;
+          const renamedFile = new File([file], uniqueName, { type: file.type });
+          formData.append("photos", renamedFile);
         });
       } catch (e) {
-        setError("Error adding photos: " + (e instanceof Error ? e.message : String(e)));
-        return;
+        // If File constructor fails, just use original files
+        try {
+          const photos = photoInputRef.current?.getFiles() || [];
+          photos.forEach((file) => {
+            formData.append("photos", file);
+          });
+        } catch (e2) {
+          setError("Error adding photos: " + (e2 instanceof Error ? e2.message : String(e2)));
+          return;
+        }
       }
 
       // Step 3: Send request
