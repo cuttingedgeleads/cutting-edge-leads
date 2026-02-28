@@ -21,33 +21,60 @@ export function LeadForm() {
 
     try {
       const form = event.currentTarget;
-      const formData = new FormData(form);
       
-      // Manually add photos from the photo input component
-      const photos = photoInputRef.current?.getFiles() || [];
-      photos.forEach((file) => {
-        formData.append("photos", file);
-      });
+      // Step 1: Create FormData
+      let formData: FormData;
+      try {
+        formData = new FormData(form);
+      } catch (e) {
+        setError("Error creating form data: " + (e instanceof Error ? e.message : String(e)));
+        return;
+      }
+      
+      // Step 2: Add photos
+      try {
+        const photos = photoInputRef.current?.getFiles() || [];
+        photos.forEach((file) => {
+          formData.append("photos", file);
+        });
+      } catch (e) {
+        setError("Error adding photos: " + (e instanceof Error ? e.message : String(e)));
+        return;
+      }
 
-      const response = await fetch("/api/leads/create", {
-        method: "POST",
-        body: formData,
-      });
+      // Step 3: Send request
+      let response: Response;
+      try {
+        response = await fetch("/api/leads/create", {
+          method: "POST",
+          body: formData,
+        });
+      } catch (e) {
+        setError("Network error: " + (e instanceof Error ? e.message : String(e)));
+        return;
+      }
 
-      const result = await response.json();
+      // Step 4: Parse response
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        setError("Error parsing response: " + (e instanceof Error ? e.message : String(e)));
+        return;
+      }
 
       if (!response.ok) {
         setError(result.error || "Failed to create lead");
         return;
       }
 
-      // Success - refresh the page and clear form
+      // Step 5: Success - refresh
       photoInputRef.current?.clear();
       form.reset();
       router.refresh();
     } catch (err) {
       console.error("Submit error:", err);
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError("Unexpected error: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setIsSubmitting(false);
     }
