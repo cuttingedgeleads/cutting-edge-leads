@@ -97,6 +97,7 @@ export default async function LeadsPage() {
                   <div>
                     <p className="font-semibold">{lead.jobType}</p>
                     {isApproved ? <p className="text-sm text-slate-700">{lead.name}</p> : null}
+                    {isApproved ? <p className="text-sm text-slate-600">{lead.email}</p> : null}
                     <p className="text-sm text-slate-600">
                       {isApproved ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}` : lead.city}
                     </p>

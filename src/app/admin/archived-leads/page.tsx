@@ -58,6 +58,7 @@ export default async function ArchivedLeadsPage() {
                 <div>
                   <p className="font-semibold">{lead.jobType}</p>
                   <p className="text-sm text-slate-700">{lead.name}</p>
+                  <p className="text-sm text-slate-600">{lead.email}</p>
                   <p className="text-sm text-slate-600">
                     {lead.address}, {lead.city}
                   </p>

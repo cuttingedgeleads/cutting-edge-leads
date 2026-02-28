@@ -16,6 +16,7 @@ async function createLead(formData: FormData) {
   "use server";
 
   const name = String(formData.get("name") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
   const jobType = String(formData.get("jobType") || "").trim();
   const description = String(formData.get("description") || "").trim();
   const address = String(formData.get("address") || "").trim();
@@ -27,7 +28,19 @@ async function createLead(formData: FormData) {
     return file instanceof File && file.size > 0;
   });
 
-  if (!name || !jobType || !description || !address || !city || !state || !zip || price < MIN_PRICE) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (
+    !name ||
+    !email ||
+    !emailRegex.test(email) ||
+    !jobType ||
+    !description ||
+    !address ||
+    !city ||
+    !state ||
+    !zip ||
+    price < MIN_PRICE
+  ) {
     return;
   }
 
@@ -47,6 +60,7 @@ async function createLead(formData: FormData) {
   const lead = await prisma.lead.create({
     data: {
       name,
+      email,
       jobType,
       description,
       address,
@@ -131,6 +145,16 @@ export default async function AdminLeadsPage() {
                 name="name"
                 className="mt-1 w-full rounded-lg border px-3 py-2"
                 placeholder="Customer name"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Email</label>
+              <input
+                name="email"
+                type="email"
+                className="mt-1 w-full rounded-lg border px-3 py-2"
+                placeholder="customer@email.com"
                 required
               />
             </div>
@@ -229,6 +253,7 @@ export default async function AdminLeadsPage() {
                     <div>
                       <p className="font-semibold">{lead.jobType}</p>
                       <p className="text-sm text-slate-700">{lead.name}</p>
+                      <p className="text-sm text-slate-600">{lead.email}</p>
                       <p className="text-sm text-slate-600">
                         {lead.address}, {lead.city}, {lead.state} {lead.zip}
                       </p>

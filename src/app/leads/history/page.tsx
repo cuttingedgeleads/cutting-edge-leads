@@ -38,6 +38,7 @@ export default async function PurchaseHistoryPage() {
                 <div className="space-y-1">
                   <p className="font-semibold">{purchase.lead.jobType}</p>
                   <p className="text-sm text-slate-700">{purchase.lead.name}</p>
+                  <p className="text-sm text-slate-600">{purchase.lead.email}</p>
                   <p className="text-sm text-slate-600">
                     {purchase.lead.address}, {purchase.lead.city}, {purchase.lead.state} {purchase.lead.zip}
                   </p>
