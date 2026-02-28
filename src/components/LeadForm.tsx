@@ -69,9 +69,16 @@ export function LeadForm() {
       // Step 4: Parse response
       let result;
       try {
-        result = await response.json();
+        const text = await response.text();
+        try {
+          result = JSON.parse(text);
+        } catch {
+          // Server returned non-JSON (probably HTML error page)
+          setError("Server error: " + (text.length > 200 ? text.substring(0, 200) + "..." : text));
+          return;
+        }
       } catch (e) {
-        setError("Error parsing response: " + (e instanceof Error ? e.message : String(e)));
+        setError("Error reading response: " + (e instanceof Error ? e.message : String(e)));
         return;
       }
 
