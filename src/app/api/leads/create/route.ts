@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
     
     const name = String(formData.get("name") || "").trim();
     const email = String(formData.get("email") || "").trim().toLowerCase();
+    const phone = String(formData.get("phone") || "").trim();
     const jobType = String(formData.get("jobType") || "").trim();
     const description = String(formData.get("description") || "").trim();
     const address = String(formData.get("address") || "").trim();
@@ -33,8 +34,8 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (
       !name ||
-      !email ||
-      !emailRegex.test(email) ||
+      (email && !emailRegex.test(email)) ||
+      !phone ||
       !jobType ||
       !description ||
       !address ||
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
+        phone,
         jobType,
         description,
         address,

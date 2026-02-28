@@ -160,12 +160,21 @@ export function LeadForm() {
         />
       </div>
       <div>
-        <label className="text-sm font-medium">Email</label>
+        <label className="text-sm font-medium">Email (optional)</label>
         <input
           name="email"
           type="email"
           className="mt-1 w-full rounded-lg border px-3 py-2"
           placeholder="customer@email.com"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Phone</label>
+        <input
+          name="phone"
+          type="tel"
+          className="mt-1 w-full rounded-lg border px-3 py-2"
+          placeholder="(555) 123-4567"
           required
         />
       </div>
