@@ -8,6 +8,7 @@ import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { LeadPhotoInput } from "@/components/LeadPhotoInput";
 import { sendNewLeadEmail } from "@/lib/email";
 
 const MIN_PRICE = 20;
@@ -221,13 +222,7 @@ export default async function AdminLeadsPage() {
             </div>
             <div className="sm:col-span-2">
               <label className="text-sm font-medium">Photos</label>
-              <input
-                name="photos"
-                type="file"
-                accept="image/*"
-                multiple
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-              />
+              <LeadPhotoInput />
             </div>
             <div className="sm:col-span-2">
               <button
