@@ -9,6 +9,7 @@ async function createContractor(formData: FormData) {
   "use server";
 
   const name = String(formData.get("name") || "").trim();
+  const businessName = String(formData.get("businessName") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const serviceCities = String(formData.get("serviceCities") || "")
@@ -17,7 +18,7 @@ async function createContractor(formData: FormData) {
     .filter(Boolean)
     .join(",");
 
-  if (!name || !email || !password) {
+  if (!name || !businessName || !email || !password) {
     return;
   }
 
@@ -32,6 +33,7 @@ async function createContractor(formData: FormData) {
   await prisma.user.create({
     data: {
       name,
+      businessName,
       email,
       passwordHash,
       role: "CONTRACTOR",
@@ -63,6 +65,15 @@ export default async function ContractorsPage() {
             <div>
               <label className="text-sm font-medium">Name</label>
               <input name="name" className="mt-1 w-full rounded-lg border px-3 py-2" required />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Business name</label>
+              <input
+                name="businessName"
+                className="mt-1 w-full rounded-lg border px-3 py-2"
+                placeholder="ABC Lawn Services"
+                required
+              />
             </div>
             <div>
               <label className="text-sm font-medium">Email</label>
@@ -110,6 +121,7 @@ export default async function ContractorsPage() {
             {contractors.map((contractor) => (
               <div key={contractor.id} className="bg-white rounded-xl border p-4">
                 <p className="font-medium">{contractor.name}</p>
+                <p className="text-sm text-slate-600">{contractor.businessName || "Business name pending"}</p>
                 <p className="text-sm text-slate-600">{contractor.email}</p>
                 <p className="text-xs text-slate-500">
                   Cities: {contractor.serviceCities || "None"}

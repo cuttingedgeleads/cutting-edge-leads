@@ -4,19 +4,43 @@ const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = "admin@cuttingedge.local";
-  const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
-  if (existing) return;
+  const passwordHash = await bcrypt.hash("1234", 10);
 
-  const passwordHash = await bcrypt.hash("Admin123!", 10);
-  await prisma.user.create({
-    data: {
+  const users = [
+    {
       name: "Admin",
-      email: adminEmail,
-      passwordHash,
+      email: "admin@cuttingedge.local",
       role: "ADMIN",
     },
-  });
+    {
+      name: "Test Contractor",
+      businessName: "ABC Lawn Services",
+      email: "contractor@test.com",
+      role: "CONTRACTOR",
+    },
+    {
+      name: "Test Contractor 2",
+      businessName: "Green Edge Landscaping",
+      email: "contractor2@test.com",
+      role: "CONTRACTOR",
+    },
+  ];
+
+  for (const user of users) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        name: user.name,
+        role: user.role,
+        businessName: user.businessName || "",
+        passwordHash,
+      },
+      create: {
+        ...user,
+        passwordHash,
+      },
+    });
+  }
 }
 
 main()

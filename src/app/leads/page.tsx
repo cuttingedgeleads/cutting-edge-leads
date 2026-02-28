@@ -96,6 +96,7 @@ export default async function LeadsPage() {
                 <div className="flex flex-wrap justify-between gap-2">
                   <div>
                     <p className="font-semibold">{lead.jobType}</p>
+                    {isApproved ? <p className="text-sm text-slate-700">{lead.name}</p> : null}
                     <p className="text-sm text-slate-600">
                       {isApproved ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}` : lead.city}
                     </p>

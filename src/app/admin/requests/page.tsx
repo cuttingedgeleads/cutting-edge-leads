@@ -90,6 +90,7 @@ export default async function RequestsPage() {
               <div className="flex flex-wrap justify-between gap-2">
                 <div>
                   <p className="font-semibold">{request.lead.jobType}</p>
+                  <p className="text-sm text-slate-700">{request.lead.name}</p>
                   <p className="text-sm text-slate-600">
                     {request.lead.address}, {request.lead.city}, {request.lead.state} {request.lead.zip}
                   </p>

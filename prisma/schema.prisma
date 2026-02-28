@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -19,18 +19,27 @@ enum UnlockStatus {
 }
 
 model User {
-  id           String                @id @default(cuid())
-  email        String                @unique
-  name         String
-  passwordHash String
-  role          Role                @default(CONTRACTOR)
-  serviceCities String              @default("")
-  createdAt     DateTime            @default(now())
-  unlocks       LeadUnlockRequest[] @relation("UserUnlocks")
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  name                   String
+  businessName           String              @default("")
+  passwordHash           String
+  role                   Role                @default(CONTRACTOR)
+  phone                  String              @default("")
+  serviceCities          String              @default("")
+  timezone               String              @default("America/Chicago")
+  preferredContactMethod String              @default("EMAIL")
+  notifyNewLeads         Boolean             @default(true)
+  notifyUnlockApproved   Boolean             @default(true)
+  notifyMarketing        Boolean             @default(false)
+  notifySms              Boolean             @default(false)
+  createdAt              DateTime            @default(now())
+  unlocks                LeadUnlockRequest[] @relation("UserUnlocks")
 }
 
 model Lead {
   id          String               @id @default(cuid())
+  name        String               @default("")
   jobType     String
   description String
   address     String
