@@ -3,65 +3,35 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Preview = {
-  id: string;
   url: string;
   name: string;
-  file: File;
 };
 
 export function LeadPhotoInput() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const submitInputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<Preview[]>([]);
-  const previewsRef = useRef<Preview[]>([]);
 
-  const syncSubmitFiles = useCallback((files: File[]) => {
-    const dataTransfer = new DataTransfer();
-    files.forEach((file) => dataTransfer.items.add(file));
-    if (submitInputRef.current) {
-      submitInputRef.current.files = dataTransfer.files;
-    }
+  const collectFiles = useCallback(() => {
+    const cameraFiles = Array.from(cameraInputRef.current?.files || []);
+    const uploadFiles = Array.from(uploadInputRef.current?.files || []);
+    return [...cameraFiles, ...uploadFiles];
   }, []);
 
-  const addFiles = useCallback((files: File[]) => {
-    if (files.length === 0) return;
-    setPreviews((current) => {
-      const next = [...current];
-      files.forEach((file) => {
-        next.push({
-          id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
-          url: URL.createObjectURL(file),
-          name: file.name || "photo",
-          file,
-        });
-      });
-      syncSubmitFiles(next.map((preview) => preview.file));
-      return next;
-    });
-  }, [syncSubmitFiles]);
-
-  const removePreview = useCallback((id: string) => {
-    setPreviews((current) => {
-      const preview = current.find((item) => item.id === id);
-      if (preview) {
-        URL.revokeObjectURL(preview.url);
-      }
-      const next = current.filter((item) => item.id !== id);
-      syncSubmitFiles(next.map((item) => item.file));
-      return next;
-    });
-  }, [syncSubmitFiles]);
-
-  useEffect(() => {
-    previewsRef.current = previews;
-  }, [previews]);
+  const updatePreviews = useCallback(() => {
+    const files = collectFiles();
+    const nextPreviews = files.map((file) => ({
+      url: URL.createObjectURL(file),
+      name: file.name || "photo",
+    }));
+    setPreviews(nextPreviews);
+  }, [collectFiles]);
 
   useEffect(() => {
     return () => {
-      previewsRef.current.forEach((preview) => URL.revokeObjectURL(preview.url));
+      previews.forEach((preview) => URL.revokeObjectURL(preview.url));
     };
-  }, []);
+  }, [previews]);
 
   const hasPreviews = previews.length > 0;
 
@@ -85,52 +55,32 @@ export function LeadPhotoInput() {
       </div>
 
       <input
-        ref={submitInputRef}
-        name="photos"
-        type="file"
-        multiple
-        className="hidden"
-        aria-hidden
-      />
-      <input
         ref={cameraInputRef}
+        name="photos"
         type="file"
         accept="image/*"
         capture="environment"
         multiple
         className="hidden"
-        onChange={(event) => {
-          addFiles(Array.from(event.currentTarget.files || []));
-          event.currentTarget.value = "";
-        }}
+        onChange={updatePreviews}
       />
       <input
         ref={uploadInputRef}
+        name="photos"
         type="file"
         accept="image/*"
         multiple
         className="hidden"
-        onChange={(event) => {
-          addFiles(Array.from(event.currentTarget.files || []));
-          event.currentTarget.value = "";
-        }}
+        onChange={updatePreviews}
       />
 
       {hasPreviews ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {previews.map((preview) => (
+          {previews.map((preview, index) => (
             <div
-              key={preview.id}
+              key={`${preview.url}-${index}`}
               className="relative overflow-hidden rounded-lg border bg-slate-50"
             >
-              <button
-                type="button"
-                onClick={() => removePreview(preview.id)}
-                aria-label={`Remove ${preview.name}`}
-                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600/80 text-[12px] font-bold text-white shadow hover:bg-red-600"
-              >
-                ×
-              </button>
               <img
                 src={preview.url}
                 alt={preview.name}
