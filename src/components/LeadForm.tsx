@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { LeadPhotoInput } from "@/components/LeadPhotoInput";
 
 const MIN_PRICE = 20;
 
@@ -97,6 +98,10 @@ export function LeadForm() {
       <div className="sm:col-span-2">
         <label className="text-sm font-medium">Street address</label>
         <AddressAutocomplete />
+      </div>
+      <div className="sm:col-span-2">
+        <label className="text-sm font-medium">Photos</label>
+        <LeadPhotoInput />
       </div>
       <div>
         <label className="text-sm font-medium">City</label>

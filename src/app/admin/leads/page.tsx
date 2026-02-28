@@ -5,6 +5,7 @@ import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { LeadForm } from "@/components/LeadForm";
+import { DeleteLeadButton } from "@/components/DeleteLeadButton";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -56,7 +57,10 @@ export default async function AdminLeadsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">${lead.price}</p>
+                      <div className="flex items-center justify-end gap-2">
+                        <p className="font-semibold">${lead.price}</p>
+                        <DeleteLeadButton leadId={lead.id} />
+                      </div>
                       <p className="text-xs text-slate-500">{approvedCount}/2 unlocks</p>
                       <p className="text-xs text-slate-500">
                         Posted {lead.createdAt.toLocaleString()}
