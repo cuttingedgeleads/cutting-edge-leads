@@ -112,7 +112,6 @@ export function LeadPhotoInput() {
         type="file"
         multiple
         className="hidden"
-        readOnly
       />
 
       {hasPreviews ? (

@@ -99,10 +99,6 @@ export function LeadForm() {
         <label className="text-sm font-medium">Street address</label>
         <AddressAutocomplete />
       </div>
-      <div className="sm:col-span-2">
-        <label className="text-sm font-medium">Photos</label>
-        <LeadPhotoInput />
-      </div>
       <div>
         <label className="text-sm font-medium">City</label>
         <input
@@ -129,6 +125,10 @@ export function LeadForm() {
           className="mt-1 w-full rounded-lg border px-3 py-2"
           required
         />
+      </div>
+      <div className="sm:col-span-2">
+        <label className="text-sm font-medium">Photos</label>
+        <LeadPhotoInput />
       </div>
       
       {error && (
