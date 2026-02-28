@@ -8,7 +8,7 @@ import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
-import { LeadPhotoInput } from "@/components/LeadPhotoInput";
+// import { LeadPhotoInput } from "@/components/LeadPhotoInput";
 import { sendNewLeadEmail } from "@/lib/email";
 
 const MIN_PRICE = 20;
@@ -235,10 +235,7 @@ export default async function AdminLeadsPage() {
                 required
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Photos</label>
-              <LeadPhotoInput />
-            </div>
+            {/* Photos temporarily disabled for testing */}
             <div className="sm:col-span-2">
               <button
                 type="submit"
