@@ -1,6 +1,12 @@
 "use client";
 
-import { useRef, useState, forwardRef, useImperativeHandle } from "react";
+import { useRef, useState, forwardRef, useImperativeHandle, useEffect } from "react";
+
+type PhotoItem = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
 
 export type LeadPhotoInputRef = {
   getFiles: () => File[];
@@ -8,58 +14,120 @@ export type LeadPhotoInputRef = {
 };
 
 export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoInput(_, ref) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [files, setFiles] = useState<File[]>([]);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
 
   useImperativeHandle(ref, () => ({
-    getFiles: () => files,
+    getFiles: () => photos.map((p) => p.file),
     clear: () => {
-      setFiles([]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+      setPhotos([]);
     },
-  }), [files]);
+  }), [photos]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const newFiles = Array.from(e.target.files || []);
-    setFiles((prev) => [...prev, ...newFiles]);
-    e.target.value = "";
+  // Cleanup preview URLs on unmount
+  useEffect(() => {
+    return () => {
+      photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    };
+  }, []);
+
+  function addFiles(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    
+    const newPhotos: PhotoItem[] = Array.from(fileList).map((originalFile) => {
+      // Create a unique filename to avoid duplicate name issues
+      const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+      const ext = originalFile.name.split('.').pop() || 'jpg';
+      const newFileName = `photo-${uniqueId}.${ext}`;
+      
+      // Create a new File with the unique name
+      const renamedFile = new File([originalFile], newFileName, {
+        type: originalFile.type,
+        lastModified: originalFile.lastModified,
+      });
+      
+      return {
+        id: uniqueId,
+        file: renamedFile,
+        previewUrl: URL.createObjectURL(originalFile),
+      };
+    });
+    
+    setPhotos((prev) => [...prev, ...newPhotos]);
   }
 
-  function removeFile(index: number) {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+  function removePhoto(id: string) {
+    setPhotos((prev) => {
+      const photo = prev.find((p) => p.id === id);
+      if (photo) URL.revokeObjectURL(photo.previewUrl);
+      return prev.filter((p) => p.id !== id);
+    });
   }
 
   return (
     <div className="mt-1 rounded-lg border px-3 py-3 space-y-3">
       <div className="flex flex-wrap gap-2">
-        <label className="cursor-pointer rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50">
-          Add photos
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleChange}
-          />
-        </label>
+        <button
+          type="button"
+          onClick={() => cameraInputRef.current?.click()}
+          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Take photo
+        </button>
+        <button
+          type="button"
+          onClick={() => uploadInputRef.current?.click()}
+          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium hover:bg-slate-50"
+        >
+          Upload from device
+        </button>
       </div>
 
-      {files.length > 0 ? (
-        <div className="space-y-2">
-          {files.map((file, index) => (
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          addFiles(e.currentTarget.files);
+          e.currentTarget.value = "";
+        }}
+      />
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          addFiles(e.currentTarget.files);
+          e.currentTarget.value = "";
+        }}
+      />
+
+      {photos.length > 0 ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {photos.map((photo) => (
             <div
-              key={`${file.name}-${index}`}
-              className="flex items-center justify-between rounded border bg-slate-50 px-3 py-2"
+              key={photo.id}
+              className="relative overflow-hidden rounded-lg border bg-slate-50"
             >
-              <span className="text-sm truncate">{file.name}</span>
               <button
                 type="button"
-                onClick={() => removeFile(index)}
-                className="ml-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs font-bold text-white hover:bg-red-700"
+                onClick={() => removePhoto(photo.id)}
+                aria-label="Remove photo"
+                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600/80 text-xs font-bold text-white shadow-sm hover:bg-red-600 z-10"
               >
                 ×
               </button>
+              <img
+                src={photo.previewUrl}
+                alt="Photo preview"
+                className="h-28 w-full object-cover"
+              />
             </div>
           ))}
         </div>
