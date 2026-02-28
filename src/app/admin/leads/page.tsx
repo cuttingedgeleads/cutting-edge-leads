@@ -46,15 +46,30 @@ async function createLead(formData: FormData) {
   }
 
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
+  const isVercel = Boolean(process.env.VERCEL);
+  
+  if (!isVercel) {
+    await mkdir(uploadsDir, { recursive: true });
+  }
 
   const photos = await Promise.all(
     photoFiles.map(async (file) => {
-      const extension = path.extname(file.name || "");
-      const filename = `${randomUUID()}${extension || ".jpg"}`;
       const buffer = Buffer.from(await file.arrayBuffer());
-      await writeFile(path.join(uploadsDir, filename), buffer);
-      return `/uploads/${filename}`;
+      
+      if (!isVercel) {
+        try {
+          const extension = path.extname(file.name || "");
+          const filename = `${randomUUID()}${extension || ".jpg"}`;
+          await writeFile(path.join(uploadsDir, filename), buffer);
+          return `/uploads/${filename}`;
+        } catch (err) {
+          console.error("Failed to write photo to disk:", err);
+        }
+      }
+      
+      // Fallback to base64 data URL for Vercel
+      const mimeType = file.type || "image/jpeg";
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
     })
   );
 
@@ -104,7 +119,7 @@ async function createLead(formData: FormData) {
       city: lead.city,
       zip: lead.zip,
       description: lead.description,
-      photoUrl: lead.photos[0]?.url || null,
+      photoUrl: lead.photos[0]?.url?.startsWith("data:") ? null : (lead.photos[0]?.url || null),
     });
   }
 
