@@ -38,7 +38,7 @@ export function LeadForm() {
       form.reset();
     } catch (err) {
       console.error("Submit error:", err);
-      setError("Something went wrong. Please try again.");
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
