@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
 import { ContractorTabs } from "@/components/ContractorTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { UnlockButton } from "@/components/UnlockButton";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -117,18 +118,23 @@ export default async function LeadsPage() {
                     </span>
                   ) : soldOut ? (
                     <span className="text-sm font-semibold text-amber-600">Sold out.</span>
+                  ) : myRequest?.status === "REJECTED" ? (
+                    <span className="text-sm font-semibold text-red-600">
+                      Unlock has been denied
+                    </span>
                   ) : myRequest?.status === "PENDING" ? (
                     <span className="text-sm font-semibold text-amber-600">
                       Request pending approval.
                     </span>
                   ) : (
-                    <form action={requestUnlock}>
-                      <input type="hidden" name="leadId" value={lead.id} />
-                      <input type="hidden" name="contractorId" value={session.user.id} />
-                      <button type="submit" className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm">
-                        Request unlock
-                      </button>
-                    </form>
+                    <UnlockButton
+                      leadId={lead.id}
+                      contractorId={session.user.id}
+                      jobType={lead.jobType}
+                      city={lead.city}
+                      price={lead.price}
+                      onSubmit={requestUnlock}
+                    />
                   )}
                 </div>
               </div>
