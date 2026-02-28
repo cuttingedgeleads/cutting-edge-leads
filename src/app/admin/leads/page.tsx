@@ -46,15 +46,27 @@ async function createLead(formData: FormData) {
   }
 
   const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
+  const shouldWriteToDisk = !process.env.VERCEL;
+  if (shouldWriteToDisk) {
+    await mkdir(uploadsDir, { recursive: true });
+  }
 
   const photos = await Promise.all(
     photoFiles.map(async (file) => {
-      const extension = path.extname(file.name || "");
-      const filename = `${randomUUID()}${extension || ".jpg"}`;
       const buffer = Buffer.from(await file.arrayBuffer());
-      await writeFile(path.join(uploadsDir, filename), buffer);
-      return `/uploads/${filename}`;
+      if (shouldWriteToDisk) {
+        try {
+          const extension = path.extname(file.name || "");
+          const filename = `${randomUUID()}${extension || ".jpg"}`;
+          await writeFile(path.join(uploadsDir, filename), buffer);
+          return `/uploads/${filename}`;
+        } catch (error) {
+          console.error("Failed to store lead photo on disk, falling back to inline data.", error);
+        }
+      }
+
+      const mimeType = file.type || "image/jpeg";
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
     })
   );
 
@@ -97,6 +109,7 @@ async function createLead(formData: FormData) {
     .map((contractor) => contractor.email);
 
   if (recipients.length > 0) {
+    const photoUrl = lead.photos[0]?.url || null;
     await sendNewLeadEmail({
       to: recipients,
       loginUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/login`,
@@ -104,7 +117,7 @@ async function createLead(formData: FormData) {
       city: lead.city,
       zip: lead.zip,
       description: lead.description,
-      photoUrl: lead.photos[0]?.url || null,
+      photoUrl: photoUrl && photoUrl.startsWith("data:") ? null : photoUrl,
     });
   }
 
@@ -139,7 +152,11 @@ export default async function AdminLeadsPage() {
         <AdminTabs />
         <section className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Create a lead</h2>
-          <form action={createLead} className="grid gap-4 sm:grid-cols-2">
+          <form
+            action={createLead}
+            encType="multipart/form-data"
+            className="grid gap-4 sm:grid-cols-2"
+          >
             <div>
               <label className="text-sm font-medium">Name</label>
               <input
