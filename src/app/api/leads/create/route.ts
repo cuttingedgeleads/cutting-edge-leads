@@ -161,9 +161,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const pushRecipients = matchingContractors
-      .filter((contractor) => contractor.notifyNewLeads)
-      .map((contractor) => contractor.id);
+    const pushContractors = await prisma.user.findMany({
+      where: {
+        role: "CONTRACTOR",
+        notifyNewLeads: true,
+      },
+    });
+
+    const pushRecipients = pushContractors.map((contractor) => contractor.id);
 
     await sendPushToUserIds(pushRecipients, {
       title: "New lead available",
