@@ -25,22 +25,6 @@ export function NavBar({
           {role && role !== "CONTRACTOR" ? (
             <span className="text-xs text-slate-500">{role}</span>
           ) : null}
-          {role === "CONTRACTOR" ? (
-            <Link
-              href="/profile"
-              className="mt-3 inline-flex items-center gap-3 rounded-xl border px-3 py-2 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
-            >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-900 text-white text-xs font-semibold">
-                {initial}
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold text-slate-900">{displayName}</span>
-                {businessName ? (
-                  <span className="text-xs text-slate-500">{businessName}</span>
-                ) : null}
-              </span>
-            </Link>
-          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {role === "CONTRACTOR" && (
@@ -65,6 +49,22 @@ export function NavBar({
           >
             Sign out
           </button>
+          {role === "CONTRACTOR" ? (
+            <Link
+              href="/profile"
+              className="ml-auto inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white text-[10px] font-semibold">
+                {initial}
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-xs font-semibold text-slate-900">{displayName}</span>
+                {businessName ? (
+                  <span className="text-[10px] text-slate-500">{businessName}</span>
+                ) : null}
+              </span>
+            </Link>
+          ) : null}
         </div>
       </div>
     </header>
