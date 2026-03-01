@@ -61,7 +61,7 @@ export default async function PurchaseHistoryPage() {
                 {`Purchased $${purchase.lead.price}`}
               </div>
               <div className="space-y-1 pr-32">
-                <p className="font-semibold">{purchase.lead.jobType}</p>
+                <p className="font-semibold break-words">{purchase.lead.jobType}</p>
                 <p className="text-sm text-slate-700">{purchase.lead.name}</p>
                 <p className="text-sm text-slate-600">{purchase.lead.email}</p>
                 {purchase.lead.phone ? (

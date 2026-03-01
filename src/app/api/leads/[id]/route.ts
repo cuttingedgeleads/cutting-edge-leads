@@ -4,6 +4,51 @@ import { unlink } from "fs/promises";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getSession();
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const leadParams = await params;
+    const leadId = leadParams.id;
+    if (!leadId) {
+      return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const price = Number(body.price);
+    if (!Number.isFinite(price)) {
+      return NextResponse.json({ error: "Invalid price" }, { status: 400 });
+    }
+
+    const updatedLead = await prisma.lead.update({
+      where: { id: leadId },
+      data: {
+        name: String(body.name || ""),
+        email: String(body.email || ""),
+        phone: String(body.phone || ""),
+        jobType: String(body.jobType || ""),
+        description: String(body.description || ""),
+        address: String(body.address || ""),
+        city: String(body.city || ""),
+        state: String(body.state || ""),
+        zip: String(body.zip || ""),
+        price,
+      },
+    });
+
+    return NextResponse.json({ success: true, lead: updatedLead });
+  } catch (error) {
+    console.error("Update lead failed:", error);
+    return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

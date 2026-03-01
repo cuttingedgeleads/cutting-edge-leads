@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { formatCentralDate, formatCentralDateTime } from "@/lib/datetime";
-import { NavBar } from "@/components/NavBar";
-import { AdminTabs } from "@/components/AdminTabs";
+import { formatCentralDateTime } from "@/lib/datetime";
+import { AdminHeader } from "@/components/AdminHeader";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { DeleteLeadButton } from "@/components/DeleteLeadButton";
+import { EditLeadButton } from "@/components/EditLeadButton";
+
+const MAX_UNLOCKS = 2;
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -26,56 +28,32 @@ export default async function ActiveLeadsPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const activeLeads = leads.filter((lead) => lead.unlocks.length < 2);
+  const activeLeads = leads.filter((lead) => lead.unlocks.length < MAX_UNLOCKS);
 
   return (
     <div className="min-h-screen">
-      <NavBar name={session.user.name} role={session.user.role} />
+      <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
-        <AdminTabs />
         <section>
           <h3 className="text-lg font-semibold mb-3">Active Leads</h3>
           <div className="grid gap-4">
             {activeLeads.map((lead) => {
               const approvedCount = lead.unlocks.length;
               const expired = isExpired(lead.createdAt);
-              const soldOut = approvedCount >= 2;
+              const soldOut = approvedCount >= MAX_UNLOCKS;
               return (
                 <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
-                  <div className="absolute right-4 top-4 text-right space-y-1">
+                  <div className="absolute right-4 top-4 text-right">
                     <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
                       Price ${lead.price}
                     </div>
-                    <div className="text-xs text-slate-600">
-                      <p className="font-semibold text-slate-700">
-                        {approvedCount} unlock{approvedCount === 1 ? "" : "s"}
-                      </p>
-                      {lead.unlocks.length > 0 ? (
-                        <ul className="mt-1 space-y-1">
-                          {lead.unlocks.map((unlock) => {
-                            const contractorLabel =
-                              unlock.contractor.businessName?.trim() || unlock.contractor.name;
-                            const unlockedDate = unlock.approvedAt ?? unlock.createdAt;
-                            return (
-                              <li key={unlock.id}>
-                                - {contractorLabel} ({
-                                  formatCentralDate(unlockedDate, {
-                                    month: "numeric",
-                                    day: "numeric",
-                                  })
-                                })
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : (
-                        <p className="mt-1 text-slate-400">No unlocks yet.</p>
-                      )}
-                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {approvedCount}/{MAX_UNLOCKS} unlocked
+                    </p>
                   </div>
-                  <div className="flex flex-wrap justify-between gap-2 pt-12">
-                    <div>
-                      <p className="font-semibold">{lead.jobType}</p>
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <div className="min-w-0 pr-32">
+                      <p className="font-semibold break-words">{lead.jobType}</p>
                       <p className="text-sm text-slate-700">{lead.name}</p>
                       <p className="text-sm text-slate-600">{lead.email}</p>
                       <p className="text-sm text-slate-600">{lead.phone}</p>
@@ -87,6 +65,20 @@ export default async function ActiveLeadsPage() {
                       <p className="text-xs text-slate-500">
                         Posted {formatCentralDateTime(lead.createdAt)}
                       </p>
+                      <div className="mt-2 text-xs text-slate-600 text-left">
+                        <p className="font-semibold text-slate-700">Unlocked by:</p>
+                        {lead.unlocks.length > 0 ? (
+                          <ul className="mt-1 space-y-1 list-disc pl-2">
+                            {lead.unlocks.map((unlock) => {
+                              const contractorLabel =
+                                unlock.contractor.businessName?.trim() || unlock.contractor.name;
+                              return <li key={unlock.id}>{contractorLabel}</li>;
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="mt-1 text-slate-400">No unlocks yet.</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <p className="text-sm text-slate-700">{lead.description}</p>
@@ -95,16 +87,25 @@ export default async function ActiveLeadsPage() {
                     {expired ? (
                       <span className="text-red-600 font-semibold">Hidden (expired after 24h)</span>
                     ) : soldOut ? (
-                      <span className="text-amber-600 font-semibold">Sold out (2 unlocks)</span>
+                      <span className="text-amber-600 font-semibold">Sold out ({MAX_UNLOCKS} unlocks)</span>
                     ) : (
                       <span className="text-green-600 font-semibold">Active</span>
                     )}
-                    <button
-                      type="button"
-                      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                    >
-                      Edit
-                    </button>
+                    <EditLeadButton
+                      lead={{
+                        id: lead.id,
+                        name: lead.name,
+                        email: lead.email,
+                        phone: lead.phone,
+                        jobType: lead.jobType,
+                        description: lead.description,
+                        address: lead.address,
+                        city: lead.city,
+                        state: lead.state,
+                        zip: lead.zip,
+                        price: lead.price,
+                      }}
+                    />
                     <DeleteLeadButton leadId={lead.id} />
                   </div>
                 </div>

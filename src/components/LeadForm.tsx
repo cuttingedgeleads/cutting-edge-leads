@@ -688,11 +688,12 @@ export function LeadForm() {
           required
         >
           <option value="">Select a job type</option>
-          <option value="Grass Cutting">Grass Cutting</option>
+          <option value="Grass Maintenance">Grass Maintenance</option>
           <option value="Landscaping">Landscaping</option>
-          <option value="Grass and Landscaping Maintenance">
-            Grass and Landscaping Maintenance
+          <option value="Grass and Landscape Maintenance">
+            Grass and Landscape Maintenance
           </option>
+          <option value="Commercial Maintenance">Commercial Maintenance</option>
         </select>
       </div>
       <div>

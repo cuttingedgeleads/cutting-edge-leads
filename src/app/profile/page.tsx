@@ -3,7 +3,13 @@ import { compare, hash } from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
-import { InstallAppSection } from "@/components/InstallAppSection";
+import { EnableNotificationsButton } from "@/components/EnableNotificationsButton";
+import {
+  EditableCheckboxField,
+  EditablePasswordSection,
+  EditableSelectField,
+  EditableTextField,
+} from "@/components/ProfileEditableField";
 
 async function updateName(formData: FormData) {
   "use server";
@@ -84,7 +90,7 @@ async function updatePassword(formData: FormData) {
   redirect("/profile?success=password");
 }
 
-async function updateBusinessProfile(formData: FormData) {
+async function updateBusinessName(formData: FormData) {
   "use server";
 
   const session = await getSession();
@@ -92,34 +98,91 @@ async function updateBusinessProfile(formData: FormData) {
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
   const businessName = String(formData.get("businessName") || "").trim();
-  const phone = String(formData.get("phone") || "").trim();
-  const serviceCities = String(formData.get("serviceCities") || "")
-    .split(",")
-    .map((city) => city.trim())
-    .filter(Boolean)
-    .join(",");
-  const timezone = String(formData.get("timezone") || "America/Chicago").trim();
-  const preferredContactMethod = String(formData.get("preferredContactMethod") || "EMAIL");
-
   if (!businessName) {
     redirect("/profile?error=missing_business_name");
   }
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: {
-      businessName,
-      phone,
-      serviceCities,
-      timezone,
-      preferredContactMethod,
-    },
+    data: { businessName },
   });
 
   redirect("/profile?success=business_profile");
 }
 
-async function updateNotifications(formData: FormData) {
+async function updatePhone(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const phone = String(formData.get("phone") || "").trim();
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { phone },
+  });
+
+  redirect("/profile?success=business_profile");
+}
+
+async function updateServiceCities(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const serviceCities = String(formData.get("serviceCities") || "")
+    .split(",")
+    .map((city) => city.trim())
+    .filter(Boolean)
+    .join(",");
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { serviceCities },
+  });
+
+  redirect("/profile?success=business_profile");
+}
+
+async function updateTimezone(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const timezone = String(formData.get("timezone") || "America/Chicago").trim();
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { timezone },
+  });
+
+  redirect("/profile?success=business_profile");
+}
+
+async function updatePreferredContactMethod(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const preferredContactMethod = String(formData.get("preferredContactMethod") || "EMAIL");
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { preferredContactMethod },
+  });
+
+  redirect("/profile?success=business_profile");
+}
+
+async function updateNotifyNewLeads(formData: FormData) {
   "use server";
 
   const session = await getSession();
@@ -127,18 +190,61 @@ async function updateNotifications(formData: FormData) {
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
   const notifyNewLeads = formData.get("notifyNewLeads") === "on";
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notifyNewLeads },
+  });
+
+  redirect("/profile?success=notifications");
+}
+
+async function updateNotifyUnlockApproved(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
   const notifyUnlockApproved = formData.get("notifyUnlockApproved") === "on";
-  const notifyMarketing = formData.get("notifyMarketing") === "on";
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notifyUnlockApproved },
+  });
+
+  redirect("/profile?success=notifications");
+}
+
+async function updateNotifySms(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
   const notifySms = formData.get("notifySms") === "on";
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: {
-      notifyNewLeads,
-      notifyUnlockApproved,
-      notifyMarketing,
-      notifySms,
-    },
+    data: { notifySms },
+  });
+
+  redirect("/profile?success=notifications");
+}
+
+async function updateNotifyMarketing(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const notifyMarketing = formData.get("notifyMarketing") === "on";
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notifyMarketing },
   });
 
   redirect("/profile?success=notifications");
@@ -174,7 +280,30 @@ export default async function ProfilePage() {
         businessName={user?.businessName}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
-        <InstallAppSection />
+        <section className="bg-white rounded-2xl shadow p-6 space-y-5">
+          <div>
+            <h2 className="text-xl font-semibold">Enable notifications</h2>
+            <p className="text-sm text-slate-600">
+              Turn on push alerts so you never miss a new lead or approval update.
+            </p>
+          </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-slate-600 max-w-xl">
+              Use the button to allow browser notifications. If you’re on iOS, install the app
+              first so alerts can be delivered.
+            </p>
+            <EnableNotificationsButton />
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-700">iOS setup</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+              <li>Open Cutting Edge Leads in Safari and tap Share (□↑).</li>
+              <li>Select “Add to Home Screen.”</li>
+              <li>Launch the app from your home screen, then tap Enable Notifications.</li>
+            </ol>
+            <p className="mt-2 text-xs text-slate-500">Requires iOS 16.4 or newer.</p>
+          </div>
+        </section>
 
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div>
@@ -182,36 +311,22 @@ export default async function ProfilePage() {
             <p className="text-sm text-slate-600">Manage your account details and preferences.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-xl border bg-slate-50 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">Current email</p>
-              <p className="font-medium text-slate-900">{user?.email}</p>
-              <p className="text-xs text-slate-500">Use your primary account email for alerts.</p>
-            </div>
-            <form action={updateName} className="rounded-xl border px-4 py-3 bg-white space-y-2">
-              <label className="text-xs uppercase tracking-wide text-slate-500">Username</label>
-              <input
-                name="name"
-                defaultValue={user?.name || ""}
-                className="w-full rounded-lg border px-3 py-2"
-                required
-              />
-              <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-                Update username
-              </button>
-            </form>
-            <form action={updateEmail} className="rounded-xl border px-4 py-3 bg-white space-y-2">
-              <label className="text-xs uppercase tracking-wide text-slate-500">Email address</label>
-              <input
-                name="email"
-                type="email"
-                defaultValue={user?.email || ""}
-                className="w-full rounded-lg border px-3 py-2"
-                required
-              />
-              <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-                Update email
-              </button>
-            </form>
+            <EditableTextField
+              label="Username"
+              name="name"
+              value={user?.name}
+              action={updateName}
+              required
+            />
+            <EditableTextField
+              label="Email address"
+              name="email"
+              type="email"
+              value={user?.email}
+              action={updateEmail}
+              description="Use your primary account email for alerts."
+              required
+            />
           </div>
         </section>
 
@@ -222,65 +337,54 @@ export default async function ProfilePage() {
               Keep your business details current so we can route the right leads.
             </p>
           </div>
-          <form action={updateBusinessProfile} className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="text-sm font-medium">Business name</label>
-              <input
-                name="businessName"
-                defaultValue={user?.businessName || ""}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Phone number</label>
-              <input
-                name="phone"
-                defaultValue={user?.phone || ""}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                placeholder="(555) 555-5555"
-              />
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <EditableTextField
+              label="Business name"
+              name="businessName"
+              value={user?.businessName}
+              action={updateBusinessName}
+              required
+            />
+            <EditableTextField
+              label="Phone number"
+              name="phone"
+              value={user?.phone}
+              action={updatePhone}
+              placeholder="(555) 555-5555"
+            />
             <div className="sm:col-span-2">
-              <label className="text-sm font-medium">Service areas (comma-separated)</label>
-              <input
+              <EditableTextField
+                label="Service areas (comma-separated)"
                 name="serviceCities"
-                defaultValue={user?.serviceCities || ""}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
+                value={user?.serviceCities}
+                action={updateServiceCities}
                 placeholder="Dallas, Plano, Frisco"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium">Timezone</label>
-              <select
-                name="timezone"
-                defaultValue={user?.timezone || "America/Chicago"}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-              >
-                <option value="America/Chicago">Central (America/Chicago)</option>
-                <option value="America/New_York">Eastern (America/New_York)</option>
-                <option value="America/Denver">Mountain (America/Denver)</option>
-                <option value="America/Los_Angeles">Pacific (America/Los_Angeles)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Preferred contact method</label>
-              <select
-                name="preferredContactMethod"
-                defaultValue={user?.preferredContactMethod || "EMAIL"}
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-              >
-                <option value="EMAIL">Email</option>
-                <option value="SMS">SMS</option>
-                <option value="PHONE">Phone call</option>
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-                Save business profile
-              </button>
-            </div>
-          </form>
+            <EditableSelectField
+              label="Timezone"
+              name="timezone"
+              value={user?.timezone || "America/Chicago"}
+              action={updateTimezone}
+              options={[
+                { value: "America/Chicago", label: "Central (America/Chicago)" },
+                { value: "America/New_York", label: "Eastern (America/New_York)" },
+                { value: "America/Denver", label: "Mountain (America/Denver)" },
+                { value: "America/Los_Angeles", label: "Pacific (America/Los_Angeles)" },
+              ]}
+            />
+            <EditableSelectField
+              label="Preferred contact method"
+              name="preferredContactMethod"
+              value={user?.preferredContactMethod || "EMAIL"}
+              action={updatePreferredContactMethod}
+              options={[
+                { value: "EMAIL", label: "Email" },
+                { value: "SMS", label: "SMS" },
+                { value: "PHONE", label: "Phone call" },
+              ]}
+            />
+          </div>
         </section>
 
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
@@ -288,40 +392,7 @@ export default async function ProfilePage() {
             <h3 className="text-lg font-semibold">Security</h3>
             <p className="text-sm text-slate-600">Use a strong password you don’t use elsewhere.</p>
           </div>
-          <form action={updatePassword} className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <label className="text-sm font-medium">Current password</label>
-              <input
-                name="currentPassword"
-                type="password"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">New password</label>
-              <input
-                name="newPassword"
-                type="password"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Confirm password</label>
-              <input
-                name="confirmPassword"
-                type="password"
-                className="mt-1 w-full rounded-lg border px-3 py-2"
-                required
-              />
-            </div>
-            <div className="sm:col-span-3">
-              <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-                Update password
-              </button>
-            </div>
-          </form>
+          <EditablePasswordSection action={updatePassword} />
           <div className="rounded-xl border bg-slate-50 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-medium">Two-factor authentication</p>
@@ -342,61 +413,36 @@ export default async function ProfilePage() {
             <h3 className="text-lg font-semibold">Notification settings</h3>
             <p className="text-sm text-slate-600">Choose how we keep you updated.</p>
           </div>
-          <form action={updateNotifications} className="grid gap-3">
-            <label className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
-              <div>
-                <p className="font-medium">New lead alerts</p>
-                <p className="text-sm text-slate-600">Get notified when new leads are posted.</p>
-              </div>
-              <input
-                type="checkbox"
-                name="notifyNewLeads"
-                defaultChecked={user?.notifyNewLeads}
-                className="h-4 w-4"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
-              <div>
-                <p className="font-medium">Unlock approvals</p>
-                <p className="text-sm text-slate-600">Alerts when your lead unlocks are approved.</p>
-              </div>
-              <input
-                type="checkbox"
-                name="notifyUnlockApproved"
-                defaultChecked={user?.notifyUnlockApproved}
-                className="h-4 w-4"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
-              <div>
-                <p className="font-medium">SMS notifications</p>
-                <p className="text-sm text-slate-600">Receive text alerts for urgent lead activity.</p>
-              </div>
-              <input
-                type="checkbox"
-                name="notifySms"
-                defaultChecked={user?.notifySms}
-                className="h-4 w-4"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-4 rounded-xl border px-4 py-3">
-              <div>
-                <p className="font-medium">Product updates</p>
-                <p className="text-sm text-slate-600">Occasional product tips and announcements.</p>
-              </div>
-              <input
-                type="checkbox"
-                name="notifyMarketing"
-                defaultChecked={user?.notifyMarketing}
-                className="h-4 w-4"
-              />
-            </label>
-            <div>
-              <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-                Save notification settings
-              </button>
-            </div>
-          </form>
+          <div className="grid gap-3">
+            <EditableCheckboxField
+              label="New lead alerts"
+              name="notifyNewLeads"
+              value={user?.notifyNewLeads}
+              action={updateNotifyNewLeads}
+              description="Get notified when new leads are posted."
+            />
+            <EditableCheckboxField
+              label="Unlock approvals"
+              name="notifyUnlockApproved"
+              value={user?.notifyUnlockApproved}
+              action={updateNotifyUnlockApproved}
+              description="Alerts when your lead unlocks are approved."
+            />
+            <EditableCheckboxField
+              label="SMS notifications"
+              name="notifySms"
+              value={user?.notifySms}
+              action={updateNotifySms}
+              description="Receive text alerts for urgent lead activity."
+            />
+            <EditableCheckboxField
+              label="Product updates"
+              name="notifyMarketing"
+              value={user?.notifyMarketing}
+              action={updateNotifyMarketing}
+              description="Occasional product tips and announcements."
+            />
+          </div>
         </section>
       </main>
     </div>

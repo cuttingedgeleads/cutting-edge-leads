@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { NavBar } from "@/components/NavBar";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminHeader } from "@/components/AdminHeader";
 import { LeadForm } from "@/components/LeadForm";
 
 export default async function AdminLeadsPage() {
@@ -11,9 +10,8 @@ export default async function AdminLeadsPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar name={session.user.name} role={session.user.role} />
+      <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
-        <AdminTabs />
         <section className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Create Lead</h2>
           <LeadForm />

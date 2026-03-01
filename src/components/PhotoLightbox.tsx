@@ -99,7 +99,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
               alt={photo.alt || "Lead photo"}
               className={
                 thumbnailClassName ||
-                "h-20 w-20 rounded-lg object-cover border transition hover:opacity-90"
+                "h-28 w-20 rounded-lg object-cover border transition hover:opacity-90"
               }
             />
           </button>
@@ -112,16 +112,18 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="relative flex max-h-full w-full max-w-4xl items-center justify-center"
+            className="relative flex w-full max-w-[90vw] max-h-[85vh] items-center justify-center"
             onClick={(event) => event.stopPropagation()}
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
-            <img
-              src={activePhoto.url}
-              alt={activePhoto.alt || "Lead photo"}
-              className="max-h-[85vh] w-auto max-w-full rounded-xl object-contain"
-            />
+            <div className="flex h-full w-full aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-black/40">
+              <img
+                src={activePhoto.url}
+                alt={activePhoto.alt || "Lead photo"}
+                className="h-full w-full object-contain"
+              />
+            </div>
 
             <button
               type="button"

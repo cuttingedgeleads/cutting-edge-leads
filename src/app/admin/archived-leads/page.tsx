@@ -2,9 +2,10 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCentralDateTime } from "@/lib/datetime";
-import { NavBar } from "@/components/NavBar";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminHeader } from "@/components/AdminHeader";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+
+const MAX_UNLOCKS = 2;
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -31,19 +32,18 @@ export default async function ArchivedLeadsPage() {
   const archivedLeads = leads.filter((lead) => {
     const approvedCount = lead.unlocks.length;
     const expired = isExpired(lead.createdAt);
-    const soldOut = approvedCount >= 2;
+    const soldOut = approvedCount >= MAX_UNLOCKS;
     return expired || soldOut;
   });
 
   return (
     <div className="min-h-screen">
-      <NavBar name={session.user.name} role={session.user.role} />
+      <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <AdminTabs />
         <header>
           <h2 className="text-xl font-semibold">Archived leads</h2>
           <p className="text-sm text-slate-600">
-            Sold-out leads (2 unlocks) and expired/hidden leads for billing reference.
+            Sold-out leads ({MAX_UNLOCKS} unlocks) and expired/hidden leads for billing reference.
           </p>
         </header>
 
@@ -58,16 +58,14 @@ export default async function ArchivedLeadsPage() {
               <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
                 Price ${lead.price}
               </div>
-              <div className="flex flex-wrap justify-between gap-2 pt-8">
-                <div>
-                  <p className="font-semibold">{lead.jobType}</p>
+              <div className="flex flex-wrap justify-between gap-2">
+                <div className="min-w-0 pr-32">
+                  <p className="font-semibold break-words">{lead.jobType}</p>
                   <p className="text-sm text-slate-700">{lead.name}</p>
                   <p className="text-sm text-slate-600">{lead.email}</p>
                   <p className="text-sm text-slate-600">
                     {lead.address}, {lead.city}
                   </p>
-                </div>
-                <div className="text-right">
                   <p className="text-xs text-slate-500">
                     Posted {formatCentralDateTime(lead.createdAt)}
                   </p>
@@ -80,16 +78,22 @@ export default async function ArchivedLeadsPage() {
                   <p className="text-sm text-slate-600">No purchases.</p>
                 ) : (
                   <ul className="mt-2 space-y-1 text-sm text-slate-700">
-                    {lead.unlocks.map((unlock) => (
-                      <li key={unlock.id} className="flex flex-wrap justify-between gap-2">
-                        <span>
-                          {unlock.contractor.name} ({unlock.contractor.email})
-                        </span>
-                        <span className="text-slate-500">
-                          {unlock.approvedAt ? formatCentralDateTime(unlock.approvedAt) : "Approved"} • ${lead.price}
-                        </span>
-                      </li>
-                    ))}
+                    {lead.unlocks.map((unlock) => {
+                      const contractorLabel =
+                        unlock.contractor.businessName?.trim() || unlock.contractor.name;
+                      return (
+                        <li key={unlock.id} className="flex flex-wrap justify-between gap-2">
+                          <span>
+                            {unlock.contractor.name} ({contractorLabel})
+                          </span>
+                          <span className="text-slate-500">
+                            {unlock.approvedAt
+                              ? formatCentralDateTime(unlock.approvedAt)
+                              : "Approved"} • ${lead.price}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

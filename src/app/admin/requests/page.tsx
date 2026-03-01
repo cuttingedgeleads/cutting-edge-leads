@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { NavBar } from "@/components/NavBar";
-import { AdminTabs } from "@/components/AdminTabs";
+import { sendPushToUserIds } from "@/lib/push";
+import { AdminHeader } from "@/components/AdminHeader";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -17,7 +17,10 @@ async function approveRequest(formData: FormData) {
 
   const request = await prisma.leadUnlockRequest.findUnique({
     where: { id: requestId },
-    include: { lead: { include: { unlocks: { where: { status: "APPROVED" } } } } },
+    include: {
+      lead: { include: { unlocks: { where: { status: "APPROVED" } } } },
+      contractor: true,
+    },
   });
   if (!request) return;
 
@@ -41,6 +44,14 @@ async function approveRequest(formData: FormData) {
     where: { id: requestId },
     data: { status: "APPROVED", approvedAt: new Date() },
   });
+
+  if (request.contractor?.notifyUnlockApproved) {
+    await sendPushToUserIds([request.contractorId], {
+      title: "Unlock approved",
+      body: `${request.lead.jobType} has been unlocked for you`,
+      url: "/leads/history",
+    });
+  }
 
   redirect("/admin/requests");
 }
@@ -69,9 +80,8 @@ export default async function RequestsPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar name={session.user.name} role={session.user.role} />
+      <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <AdminTabs />
         <header>
           <h2 className="text-xl font-semibold">Purchase requests</h2>
           <p className="text-sm text-slate-600">

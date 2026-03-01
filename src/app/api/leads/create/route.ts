@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { sendNewLeadEmail } from "@/lib/email";
+import { sendPushToUserIds } from "@/lib/push";
 
 const MIN_PRICE = 20;
 
@@ -159,6 +160,16 @@ export async function POST(request: NextRequest) {
         photoUrl: lead.photos[0]?.url?.startsWith("data:") ? null : (lead.photos[0]?.url || null),
       });
     }
+
+    const pushRecipients = matchingContractors
+      .filter((contractor) => contractor.notifyNewLeads)
+      .map((contractor) => contractor.id);
+
+    await sendPushToUserIds(pushRecipients, {
+      title: "New lead available",
+      body: `${lead.jobType} in ${lead.city}`,
+      url: "/leads",
+    });
 
     return NextResponse.json({ success: true, leadId: lead.id });
   } catch (error) {

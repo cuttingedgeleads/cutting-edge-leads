@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import { PullToRefresh } from "@/components/PullToRefresh";
+import { NotificationProvider } from "@/components/NotificationProvider";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -45,7 +46,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider>
-      <PullToRefresh>{children}</PullToRefresh>
+      <NotificationProvider>
+        <PullToRefresh>{children}</PullToRefresh>
+      </NotificationProvider>
     </SessionProvider>
   );
 }

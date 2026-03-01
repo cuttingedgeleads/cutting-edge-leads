@@ -13,6 +13,8 @@ export function formatCentralDateTime(
     month: "numeric",
     day: "numeric",
     year: "2-digit",
+    hour: "numeric",
+    minute: "2-digit",
     ...options,
   });
 }

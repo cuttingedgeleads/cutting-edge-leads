@@ -102,7 +102,7 @@ export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoIn
           {photos.map((photo) => (
             <div
               key={photo.id}
-              className="relative overflow-hidden rounded-lg border bg-slate-50"
+              className="relative overflow-hidden rounded-lg border bg-slate-50 aspect-[3/4]"
             >
               <button
                 type="button"
@@ -115,7 +115,7 @@ export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoIn
               <img
                 src={photo.previewUrl}
                 alt="Photo preview"
-                className="h-28 w-full object-cover"
+                className="h-full w-full object-cover"
               />
             </div>
           ))}

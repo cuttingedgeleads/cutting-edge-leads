@@ -145,7 +145,7 @@ export default async function LeadsPage() {
                   {isApproved ? `Purchased $${lead.price}` : `Price $${lead.price}`}
                 </div>
                 <div className="space-y-1 pr-32">
-                  <p className="font-semibold">{lead.jobType}</p>
+                  <p className="font-semibold break-words">{lead.jobType}</p>
                   {isApproved ? <p className="text-sm text-slate-700">{lead.name}</p> : null}
                   {isApproved ? <p className="text-sm text-slate-600">{lead.email}</p> : null}
                   {isApproved ? <p className="text-sm text-slate-600">{lead.phone}</p> : null}

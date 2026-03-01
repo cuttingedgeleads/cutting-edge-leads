@@ -3,8 +3,7 @@ import { hash } from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCentralDate } from "@/lib/datetime";
-import { NavBar } from "@/components/NavBar";
-import { AdminTabs } from "@/components/AdminTabs";
+import { AdminHeader } from "@/components/AdminHeader";
 
 async function createContractor(formData: FormData) {
   "use server";
@@ -57,9 +56,8 @@ export default async function ContractorsPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar name={session.user.name} role={session.user.role} />
+      <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
-        <AdminTabs />
         <section className="bg-white rounded-2xl shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Create contractor account</h2>
           <form action={createContractor} className="grid gap-4 sm:grid-cols-2">
