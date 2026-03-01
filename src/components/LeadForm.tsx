@@ -126,16 +126,38 @@ export function LeadForm() {
       "i"
     );
 
+    // Check if a line is ONLY a label (no value after it)
+    const labelOnlyPattern = new RegExp(
+      `^(${sortedLabels
+        .map((label) => label.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
+        .join("|")})\\s*:?\\s*$`,
+      "i"
+    );
+
     const labeledData: Record<string, string> = {};
     let labeledMatches = 0;
-    lines.forEach((line) => {
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const match = line.match(labeledFieldPattern);
       if (match) {
         const key = labeledFieldMap[match[1].toLowerCase()];
-        labeledData[key] = (match[2] || "").trim();
+        let value = (match[2] || "").trim();
+        
+        // If label has no value on same line, check next line (handles multi-line format)
+        if (!value && i + 1 < lines.length) {
+          const nextLine = lines[i + 1];
+          // Only grab next line if it's NOT a label itself
+          if (!nextLine.match(labelOnlyPattern) && !nextLine.match(labeledFieldPattern)) {
+            value = nextLine.trim();
+            i++; // Skip the value line
+          }
+        }
+        
+        labeledData[key] = value;
         labeledMatches += 1;
       }
-    });
+    }
 
     const looksLikeLabeledForm =
       labeledMatches >= 5 &&
@@ -151,10 +173,8 @@ export function LeadForm() {
       const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
 
-      const commentsMatch = text.match(/comments\s*:?/i);
-      const commentsOnly = commentsMatch
-        ? text.slice((commentsMatch.index ?? 0) + commentsMatch[0].length).trim()
-        : "";
+      // Use the parsed comments value directly (handles both same-line and multi-line formats)
+      const commentsOnly = labeledData.comments || "";
 
       const fullName = [labeledData.firstName, labeledData.lastName]
         .filter(Boolean)
