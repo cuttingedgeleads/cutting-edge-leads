@@ -25,6 +25,18 @@ function formatPostedAt(date: Date) {
   return `Posted: ${datePart} at ${timePart}`;
 }
 
+function formatRelativePostedAt(date: Date) {
+  const postedAt = new Date(date).getTime();
+  const now = Date.now();
+  const diffMs = Math.max(now - postedAt, 0);
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  if (diffMinutes < 60) {
+    return `Posted ${diffMinutes} minutes ago`;
+  }
+  const diffHours = Math.floor(diffMinutes / 60);
+  return `Posted ${diffHours} hours ago`;
+}
+
 async function requestUnlock(formData: FormData) {
   "use server";
   const leadId = String(formData.get("leadId") || "");
@@ -124,7 +136,9 @@ export default async function LeadsPage() {
                       ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}`
                       : `${lead.city}, ${lead.state} ${lead.zip}`}
                   </p>
-                  <p className="text-sm text-slate-500">{formatPostedAt(lead.createdAt)}</p>
+                  <p className="text-sm text-slate-500">
+                    {isApproved ? formatPostedAt(lead.createdAt) : formatRelativePostedAt(lead.createdAt)}
+                  </p>
                 </div>
                 <p className="text-sm text-slate-700">{lead.description}</p>
                 <PhotoLightbox photos={lead.photos} />
