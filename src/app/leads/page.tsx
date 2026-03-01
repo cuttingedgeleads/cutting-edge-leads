@@ -18,10 +18,12 @@ function formatPostedAt(date: Date) {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "America/Chicago",
   });
   const timePart = postedAt.toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/Chicago",
   });
   return `Posted: ${datePart} at ${timePart}`;
 }
