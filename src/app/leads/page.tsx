@@ -120,7 +120,9 @@ export default async function LeadsPage() {
                   {isApproved ? <p className="text-sm text-slate-600">{lead.email}</p> : null}
                   {isApproved ? <p className="text-sm text-slate-600">{lead.phone}</p> : null}
                   <p className="text-sm text-slate-600">
-                    {isApproved ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}` : lead.city}
+                    {isApproved
+                      ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}`
+                      : `${lead.city}, ${lead.state} ${lead.zip}`}
                   </p>
                   <p className="text-sm text-slate-500">{formatPostedAt(lead.createdAt)}</p>
                 </div>
