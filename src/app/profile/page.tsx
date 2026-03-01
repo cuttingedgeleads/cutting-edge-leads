@@ -4,7 +4,6 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
 import { EnableNotificationsButton } from "@/components/EnableNotificationsButton";
-import { TestNotificationButton } from "@/components/TestNotificationButton";
 import {
   EditableCheckboxField,
   EditablePasswordSection,
@@ -293,10 +292,7 @@ export default async function ProfilePage() {
               Use the button to allow browser notifications. If you’re on iOS, install the app
               first so alerts can be delivered.
             </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <EnableNotificationsButton />
-              <TestNotificationButton />
-            </div>
+            <EnableNotificationsButton />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-700">iOS setup</p>
