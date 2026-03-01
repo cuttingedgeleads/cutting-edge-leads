@@ -228,12 +228,24 @@ export function LeadForm() {
         workingText = workingText.replace(zipMatch[0], " ");
       }
 
-      // 4c. Extract CITY (use comma and stop at dash/notes or digits)
-      const cityMatch = workingText.match(/,\s*([A-Za-z\s]+?)(?=\s*[-–—]|\s+\d{5}|$)/);
+      // 4c. Extract CITY (use comma, stop at notes/description keywords, dash, zip, or limit to 1-3 words)
+      // Common note starters that indicate end of location info
+      const noteKeywords = /\b(?:needs?|wants?|looking|request|please|call|contact|estimate|quote|service|weekly|monthly|biweekly|asap|urgent)\b/i;
+      const cityMatch = workingText.match(/,\s*([A-Za-z][A-Za-z\s]{0,30}?)(?=\s*[-–—]|\s+\d{5}|\s+[A-Z]{2}\b|$)/);
       if (cityMatch) {
-        const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
-        if (cityInput) cityInput.value = cityMatch[1].trim();
-        workingText = workingText.replace(cityMatch[0], " ");
+        let cityValue = cityMatch[1].trim();
+        // If city contains note keywords, truncate before them
+        const noteMatch = cityValue.match(noteKeywords);
+        if (noteMatch && noteMatch.index !== undefined && noteMatch.index > 0) {
+          cityValue = cityValue.substring(0, noteMatch.index).trim();
+        }
+        // Only use if it looks like a city (1-3 words, reasonable length)
+        const wordCount = cityValue.split(/\s+/).length;
+        if (cityValue.length >= 2 && cityValue.length <= 30 && wordCount <= 3) {
+          const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+          if (cityInput) cityInput.value = cityValue;
+          workingText = workingText.replace(cityMatch[0], " ");
+        }
       }
     }
 
