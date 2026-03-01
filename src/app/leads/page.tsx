@@ -110,23 +110,19 @@ export default async function LeadsPage() {
             const isApproved = myRequest?.status === "APPROVED";
             const soldOut = approvedCount >= 2;
             return (
-              <div key={lead.id} className="bg-white rounded-xl border p-4 space-y-3">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <div>
-                    <p className="font-semibold">{lead.jobType}</p>
-                    {isApproved ? <p className="text-sm text-slate-700">{lead.name}</p> : null}
-                    {isApproved ? <p className="text-sm text-slate-600">{lead.email}</p> : null}
-                    {isApproved ? <p className="text-sm text-slate-600">{lead.phone}</p> : null}
-                    <p className="text-sm text-slate-600">
-                      {isApproved ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}` : lead.city}
-                    </p>
-                    <p className="text-sm text-slate-500">{formatPostedAt(lead.createdAt)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">
-                      {isApproved ? `Purchased for $${lead.price}` : `$${lead.price}`}
-                    </p>
-                  </div>
+              <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
+                <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  {isApproved ? `Purchased for $${lead.price}` : `$${lead.price}`}
+                </div>
+                <div className="space-y-1 pr-32">
+                  <p className="font-semibold">{lead.jobType}</p>
+                  {isApproved ? <p className="text-sm text-slate-700">{lead.name}</p> : null}
+                  {isApproved ? <p className="text-sm text-slate-600">{lead.email}</p> : null}
+                  {isApproved ? <p className="text-sm text-slate-600">{lead.phone}</p> : null}
+                  <p className="text-sm text-slate-600">
+                    {isApproved ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}` : lead.city}
+                  </p>
+                  <p className="text-sm text-slate-500">{formatPostedAt(lead.createdAt)}</p>
                 </div>
                 <p className="text-sm text-slate-700">{lead.description}</p>
                 <PhotoLightbox photos={lead.photos} />
