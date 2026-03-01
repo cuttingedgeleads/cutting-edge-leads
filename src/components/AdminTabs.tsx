@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
+  { href: "/admin", label: "Dashboard" },
   { href: "/admin/leads", label: "Create Lead" },
   { href: "/admin/active-leads", label: "Active Leads" },
   { href: "/admin/archived-leads", label: "Archived Leads" },
@@ -12,6 +13,9 @@ const tabs = [
 ];
 
 function isActiveTab(pathname: string, href: string) {
+  if (href === "/admin") {
+    return pathname === href;
+  }
   if (href === "/admin/leads") {
     return pathname === href;
   }
