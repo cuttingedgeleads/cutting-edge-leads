@@ -33,13 +33,13 @@ export default async function PurchaseHistoryPage() {
 
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { businessName: true },
+    select: { name: true, businessName: true },
   });
 
   return (
     <div className="min-h-screen">
       <NavBar
-        name={session.user.name}
+        name={contractor?.name ?? session.user.name}
         role={session.user.role}
         businessName={contractor?.businessName}
       />

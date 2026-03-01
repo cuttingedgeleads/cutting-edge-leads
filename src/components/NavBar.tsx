@@ -35,6 +35,9 @@ export function NavBar({
               </span>
               <span className="flex flex-col leading-tight">
                 <span className="text-sm font-semibold text-slate-900">{displayName}</span>
+                {businessName ? (
+                  <span className="text-xs text-slate-500">{businessName}</span>
+                ) : null}
               </span>
             </Link>
           ) : null}

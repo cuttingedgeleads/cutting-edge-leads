@@ -168,7 +168,7 @@ export default async function ProfilePage() {
   return (
     <div className="min-h-screen">
       <NavBar
-        name={session.user.name}
+        name={user?.name ?? session.user.name}
         role={session.user.role}
         businessName={user?.businessName}
       />
