@@ -22,7 +22,7 @@ export function NavBar({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-slate-500">Cutting Edge Leads</p>
-            <p className="font-semibold">Welcome, {displayName || "User"}</p>
+            <p className="font-semibold">Welcome</p>
             {role && role !== "CONTRACTOR" ? (
               <span className="text-xs text-slate-500">{role}</span>
             ) : null}
