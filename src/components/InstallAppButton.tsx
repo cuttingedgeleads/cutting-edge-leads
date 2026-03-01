@@ -27,10 +27,13 @@ export function InstallAppButton({ label = "Install App", className = "" }: Inst
   useEffect(() => {
     setIsInstalled(isStandaloneDisplay());
 
-    function handleBeforeInstallPrompt(event: Event) {
-      event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-      setCanInstall(true);
+    function handleInstallAvailable() {
+      const promptEvent = (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent })
+        .__pwaInstallPrompt;
+      if (promptEvent) {
+        setDeferredPrompt(promptEvent);
+        setCanInstall(true);
+      }
     }
 
     function handleAppInstalled() {
@@ -39,24 +42,31 @@ export function InstallAppButton({ label = "Install App", className = "" }: Inst
       setDeferredPrompt(null);
     }
 
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleAppInstalled);
+    handleInstallAvailable();
+
+    window.addEventListener("pwa-install-available", handleInstallAvailable);
+    window.addEventListener("pwa-install-installed", handleAppInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleAppInstalled);
+      window.removeEventListener("pwa-install-available", handleInstallAvailable);
+      window.removeEventListener("pwa-install-installed", handleAppInstalled);
     };
   }, []);
 
   async function handleInstallClick() {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
+    const promptEvent =
+      deferredPrompt ||
+      (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt;
+    if (!promptEvent) return;
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
     if (choice.outcome === "accepted") {
       setIsInstalled(true);
     }
     setCanInstall(false);
     setDeferredPrompt(null);
+    (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent | null }).__pwaInstallPrompt =
+      null;
   }
 
   if (isInstalled || !canInstall) return null;
@@ -65,7 +75,7 @@ export function InstallAppButton({ label = "Install App", className = "" }: Inst
     <button
       type="button"
       onClick={handleInstallClick}
-      className={`rounded-lg bg-emerald-600 text-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-emerald-700 transition ${className}`}
+      className={`inline-flex items-center justify-center rounded-xl bg-emerald-600 px-5 py-3 text-base font-semibold text-white shadow-md shadow-emerald-600/25 transition hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 active:translate-y-px ${className}`}
     >
       {label}
     </button>
