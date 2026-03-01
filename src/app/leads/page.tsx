@@ -34,7 +34,11 @@ function formatRelativePostedAt(date: Date) {
     return `Posted ${diffMinutes} minutes ago`;
   }
   const diffHours = Math.floor(diffMinutes / 60);
-  return `Posted ${diffHours} hours ago`;
+  if (diffHours < 24) {
+    return `Posted ${diffHours} hours ago`;
+  }
+  const diffDays = Math.floor(diffHours / 24);
+  return `Posted ${diffDays} days ago`;
 }
 
 async function requestUnlock(formData: FormData) {
