@@ -16,6 +16,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Cutting Edge Leads",
   description: "Local lead marketplace MVP",
+  manifest: "/site.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Cutting Edge Leads",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport = {
+  themeColor: "#16803A",
 };
 
 export default function RootLayout({
