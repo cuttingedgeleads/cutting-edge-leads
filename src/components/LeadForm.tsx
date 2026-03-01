@@ -63,8 +63,48 @@ export function LeadForm() {
   const [quickPasteText, setQuickPasteText] = useState("");
 
   function parseQuickPaste(text: string) {
-    // v5 - Simplified: First 2 words = name, then extract rest, leftovers = description
+    // v6 - Known city list for New Orleans / Jefferson Parish area
     if (!text.trim()) return;
+
+    // Known cities in New Orleans and Jefferson Parish (Louisiana)
+    const knownCities = new Set([
+      // Jefferson Parish
+      "kenner", "metairie", "gretna", "harvey", "marrero", "westwego", "terrytown",
+      "estelle", "jefferson", "river ridge", "harahan", "elmwood", "bridge city",
+      "waggaman", "avondale", "lafitte", "jean lafitte", "barataria", "crown point",
+      "grand isle", "timberlane", "woodmere", "lincoln beach",
+      // Orleans Parish / New Orleans
+      "new orleans", "algiers", "gentilly", "lakeview", "mid-city", "midcity",
+      "uptown", "downtown", "french quarter", "marigny", "bywater", "treme",
+      "central city", "garden district", "irish channel", "carrollton", "hollygrove",
+      "broadmoor", "fontainebleau", "lakeshore", "lakewood", "pontchartrain park",
+      "east new orleans", "new orleans east", "chalmette", "arabi", "meraux", "violet",
+      // St. Tammany Parish (nearby)
+      "slidell", "covington", "mandeville", "madisonville", "abita springs", "lacombe",
+      "pearl river", "eden isles",
+      // St. Bernard Parish
+      "chalmette", "arabi", "meraux", "violet", "poydras", "saint bernard",
+      // St. Charles Parish
+      "luling", "boutte", "destrehan", "st. rose", "norco", "hahnville",
+      // Plaquemines Parish
+      "belle chasse", "port sulphur", "buras", "venice",
+    ]);
+
+    // Helper to check if a word sequence is a known city
+    const findKnownCity = (text: string): { city: string; match: string } | null => {
+      const lowerText = text.toLowerCase();
+      // Try 2-word cities first, then 1-word
+      for (const city of knownCities) {
+        const cityPattern = new RegExp(`\\b${city.replace(/[- ]/g, "[- ]?")}\\b`, "i");
+        const match = lowerText.match(cityPattern);
+        if (match) {
+          // Return properly capitalized city name
+          const properCity = city.split(/[\s-]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          return { city: properCity, match: match[0] };
+        }
+      }
+      return null;
+    };
 
     const stateNameToAbbr: Record<string, string> = {
       alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
@@ -145,17 +185,12 @@ export function LeadForm() {
       workingText = workingText.replace(addressMatch[0], " ");
     }
 
-    // 5. Extract CITY (word(s) after comma, before notes/numbers)
-    const cityMatch = workingText.match(/,\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/);
-    if (cityMatch) {
-      // Check it's not a note keyword
-      const cityCandidate = cityMatch[1].trim();
-      const isNote = /^(needs?|wants?|looking|please|call|contact|weekly|monthly|biweekly|asap|urgent)/i.test(cityCandidate);
-      if (!isNote && cityCandidate.length >= 2) {
-        const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
-        if (cityInput) cityInput.value = cityCandidate;
-        workingText = workingText.replace(cityMatch[0], " ");
-      }
+    // 5. Extract CITY (match against known cities list)
+    const cityResult = findKnownCity(workingText);
+    if (cityResult) {
+      const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+      if (cityInput) cityInput.value = cityResult.city;
+      workingText = workingText.replace(new RegExp(cityResult.match, "i"), " ");
     }
 
     // 6. Extract STATE (2-letter abbr or full name)
