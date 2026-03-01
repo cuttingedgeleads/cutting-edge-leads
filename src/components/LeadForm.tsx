@@ -63,7 +63,7 @@ export function LeadForm() {
   const [quickPasteText, setQuickPasteText] = useState("");
 
   function parseQuickPaste(text: string) {
-    // v2 - Fixed 2026-02-28 18:35
+    // v3 - Added description auto-fill 2026-02-28 18:43
     if (!text.trim()) return;
 
     // Working copy that we'll progressively clean as we extract data
@@ -122,6 +122,7 @@ export function LeadForm() {
       .replace(/[,]/g, '') // Remove commas
       .trim();
     
+    let extractedName = '';
     if (cleanedText) {
       // Look for name-like patterns (letters, spaces, hyphens, apostrophes)
       const nameMatch = cleanedText.match(/^([A-Za-z\s'-]+)/);
@@ -130,7 +131,24 @@ export function LeadForm() {
         if (name.length >= 2 && name.length < 50) {
           const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
           if (nameInput) nameInput.value = name;
+          extractedName = name;
+          // Remove extracted name from working text
+          workingText = workingText.replace(name, ' ');
         }
+      }
+    }
+
+    // 6. Auto-fill DESCRIPTION with remaining meaningful text
+    const remainingText = workingText
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/[,]/g, '') // Remove commas
+      .trim();
+    
+    if (remainingText && remainingText.length >= 5) {
+      // Only fill description if there's meaningful text left (at least 5 chars)
+      const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
+      if (descriptionInput) {
+        descriptionInput.value = remainingText;
       }
     }
 
