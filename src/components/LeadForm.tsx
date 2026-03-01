@@ -63,70 +63,22 @@ export function LeadForm() {
   const [quickPasteText, setQuickPasteText] = useState("");
 
   function parseQuickPaste(text: string) {
-    // v4 - Improved phone/state/city parsing 2026-02-28 19:52
+    // v5 - Simplified: First 2 words = name, then extract rest, leftovers = description
     if (!text.trim()) return;
 
     const stateNameToAbbr: Record<string, string> = {
-      alabama: "AL",
-      alaska: "AK",
-      arizona: "AZ",
-      arkansas: "AR",
-      california: "CA",
-      colorado: "CO",
-      connecticut: "CT",
-      delaware: "DE",
-      florida: "FL",
-      georgia: "GA",
-      hawaii: "HI",
-      idaho: "ID",
-      illinois: "IL",
-      indiana: "IN",
-      iowa: "IA",
-      kansas: "KS",
-      kentucky: "KY",
-      louisiana: "LA",
-      maine: "ME",
-      maryland: "MD",
-      massachusetts: "MA",
-      michigan: "MI",
-      minnesota: "MN",
-      mississippi: "MS",
-      missouri: "MO",
-      montana: "MT",
-      nebraska: "NE",
-      nevada: "NV",
-      "new hampshire": "NH",
-      "new jersey": "NJ",
-      "new mexico": "NM",
-      "new york": "NY",
-      "north carolina": "NC",
-      "north dakota": "ND",
-      ohio: "OH",
-      oklahoma: "OK",
-      oregon: "OR",
-      pennsylvania: "PA",
-      "rhode island": "RI",
-      "south carolina": "SC",
-      "south dakota": "SD",
-      tennessee: "TN",
-      texas: "TX",
-      utah: "UT",
-      vermont: "VT",
-      virginia: "VA",
-      washington: "WA",
-      "west virginia": "WV",
-      wisconsin: "WI",
-      wyoming: "WY",
-      "district of columbia": "DC",
+      alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+      colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
+      hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
+      kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
+      massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO",
+      montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ",
+      "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND",
+      ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI",
+      "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT",
+      vermont: "VT", virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI",
+      wyoming: "WY", "district of columbia": "DC",
     };
-
-    const stateAbbreviations = Object.values(stateNameToAbbr);
-    const stateNamePattern = Object.keys(stateNameToAbbr)
-      .sort((a, b) => b.length - a.length)
-      .map((name) => name.replace(/\s+/g, "\\s+"))
-      .join("|");
-    const stateAbbrPattern = stateAbbreviations.join("|");
-    const stateFullPattern = `(?:${stateAbbrPattern}|${stateNamePattern})`;
 
     const normalizeState = (value: string) => {
       const trimmed = value.trim();
@@ -136,161 +88,103 @@ export function LeadForm() {
     };
 
     // Working copy that we'll progressively clean as we extract data
-    let workingText = text;
+    let workingText = text.trim();
 
-    // 1. Extract EMAIL first (most reliable, has @)
+    // 1. FIRST: Extract NAME (first 2 words at the start)
+    // Names can be "John Smith", "Mary J", "Jean-Pierre O'Connor"
+    const nameMatch = workingText.match(/^([A-Za-z][A-Za-z'-]*)\s+([A-Za-z][A-Za-z'-]*)/);
+    if (nameMatch) {
+      const fullName = `${nameMatch[1]} ${nameMatch[2]}`;
+      const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
+      if (nameInput) nameInput.value = fullName;
+      // Remove name from working text
+      workingText = workingText.substring(nameMatch[0].length).trim();
+    }
+
+    // 2. Extract EMAIL (has @)
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
     const emailMatch = workingText.match(emailRegex);
     if (emailMatch) {
       const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
       if (emailInput) emailInput.value = emailMatch[1];
-      // Remove email from working text
       workingText = workingText.replace(emailMatch[0], " ");
     }
 
-    // 2. Extract PHONE next (before address to prevent digit bleeding)
-    // Match phone with optional +1/1 prefix - use two patterns to ensure we catch the prefix
+    // 3. Extract PHONE (with +1/1 prefix handling)
     const phoneWithPrefixRegex = /(\+1|1)[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
     const phoneBasicRegex = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
-    
-    // Try to match with prefix first, then without
     let phoneMatch = workingText.match(phoneWithPrefixRegex);
     if (!phoneMatch) {
       phoneMatch = workingText.match(phoneBasicRegex);
     }
-    
-    let phoneFormatted = "";
     if (phoneMatch) {
       const phoneInput = document.querySelector('input[name="phone"]') as HTMLInputElement;
       if (phoneInput) {
-        // Format phone number - extract just the 10 digits
         let digits = phoneMatch[0].replace(/\D/g, "");
         if (digits.length === 11 && digits.startsWith("1")) {
           digits = digits.slice(1);
         }
         if (digits.length === 10) {
-          phoneFormatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-          phoneInput.value = phoneFormatted;
+          phoneInput.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
         }
       }
-      // Remove ENTIRE phone match from working text (including +1 prefix)
       workingText = workingText.replace(phoneMatch[0], " ");
     }
 
-    // 3. Extract ADDRESS from cleaned text (with word boundary before house number)
-    // Now that phone is removed, the address digits won't be contaminated
-    // Try strict regex WITH suffix first
+    // 4. Extract ADDRESS (number + street name)
     const addressRegexStrict = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
     let addressMatch = workingText.match(addressRegexStrict);
-
-    // If no match, try looser pattern: number + words until comma or end
     if (!addressMatch) {
-      const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,|$)/;
+      // Looser: number + words until comma
+      const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,)/;
       addressMatch = workingText.match(addressRegexLoose);
     }
-
     if (addressMatch) {
-      const streetAddress = addressMatch[0].trim();
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
-      if (addressInput) addressInput.value = streetAddress;
-      // Remove address from working text
+      if (addressInput) addressInput.value = addressMatch[0].trim();
       workingText = workingText.replace(addressMatch[0], " ");
     }
 
-    // 4. Extract CITY + STATE + ZIP together when possible (avoids note bleed)
-    const cityStateZipRegex = new RegExp(
-      String.raw`,\s*([A-Za-z\s]+?)\s*,?\s*(${stateFullPattern})\b(?:\s+(\d{5}))?`,
-      "i"
-    );
-    const cityStateZipMatch = workingText.match(cityStateZipRegex);
-    if (cityStateZipMatch) {
-      const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
-      if (cityInput) cityInput.value = cityStateZipMatch[1].trim();
-
-      const normalizedState = normalizeState(cityStateZipMatch[2]);
-      const stateInput = document.querySelector('input[name="state"]') as HTMLInputElement;
-      if (stateInput && normalizedState) stateInput.value = normalizedState;
-
-      if (cityStateZipMatch[3]) {
-        const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
-        if (zipInput) zipInput.value = cityStateZipMatch[3];
+    // 5. Extract CITY (word(s) after comma, before notes/numbers)
+    const cityMatch = workingText.match(/,\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/);
+    if (cityMatch) {
+      // Check it's not a note keyword
+      const cityCandidate = cityMatch[1].trim();
+      const isNote = /^(needs?|wants?|looking|please|call|contact|weekly|monthly|biweekly|asap|urgent)/i.test(cityCandidate);
+      if (!isNote && cityCandidate.length >= 2) {
+        const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+        if (cityInput) cityInput.value = cityCandidate;
+        workingText = workingText.replace(cityMatch[0], " ");
       }
+    }
 
-      workingText = workingText.replace(cityStateZipMatch[0], " ");
-    } else {
-      // 4a. Extract STATE alone (abbr or full name)
-      const stateRegex = new RegExp(`\b(${stateFullPattern})\b`, "i");
-      const stateMatch = workingText.match(stateRegex);
-      if (stateMatch) {
-        const normalizedState = normalizeState(stateMatch[1]);
+    // 6. Extract STATE (2-letter abbr or full name)
+    const stateAbbreviations = Object.values(stateNameToAbbr);
+    const stateAbbrPattern = stateAbbreviations.join("|");
+    const stateNamePattern = Object.keys(stateNameToAbbr)
+      .sort((a, b) => b.length - a.length)
+      .map((name) => name.replace(/\s+/g, "\\s+"))
+      .join("|");
+    const stateRegex = new RegExp(`\\b(${stateAbbrPattern}|${stateNamePattern})\\b`, "i");
+    const stateMatch = workingText.match(stateRegex);
+    if (stateMatch) {
+      const normalizedState = normalizeState(stateMatch[1]);
+      if (normalizedState) {
         const stateInput = document.querySelector('input[name="state"]') as HTMLInputElement;
-        if (stateInput && normalizedState) stateInput.value = normalizedState;
+        if (stateInput) stateInput.value = normalizedState;
         workingText = workingText.replace(stateMatch[0], " ");
       }
-
-      // 4b. Extract ZIP alone
-      const zipMatch = workingText.match(/\b(\d{5})(?:-\d{4})?\b/);
-      if (zipMatch) {
-        const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
-        if (zipInput) zipInput.value = zipMatch[1];
-        workingText = workingText.replace(zipMatch[0], " ");
-      }
-
-      // 4c. Extract CITY (use comma, stop at notes/description keywords, dash, zip, or limit to 1-3 words)
-      // Common note starters that indicate end of location info
-      const noteKeywords = /\b(?:needs?|wants?|looking|request|please|call|contact|estimate|quote|service|weekly|monthly|biweekly|asap|urgent)\b/i;
-      const cityMatch = workingText.match(/,\s*([A-Za-z][A-Za-z\s]{0,30}?)(?=\s*[-–—]|\s+\d{5}|\s+[A-Z]{2}\b|$)/);
-      if (cityMatch) {
-        let cityValue = cityMatch[1].trim();
-        // If city contains note keywords, truncate before them
-        const noteMatch = cityValue.match(noteKeywords);
-        if (noteMatch && noteMatch.index !== undefined && noteMatch.index > 0) {
-          cityValue = cityValue.substring(0, noteMatch.index).trim();
-        }
-        // Only use if it looks like a city (1-3 words, reasonable length)
-        const wordCount = cityValue.split(/\s+/).length;
-        if (cityValue.length >= 2 && cityValue.length <= 30 && wordCount <= 3) {
-          const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
-          if (cityInput) cityInput.value = cityValue;
-          workingText = workingText.replace(cityMatch[0], " ");
-        }
-      }
     }
 
-    // 5. Extract NAME from the START of text (first 2-4 words, before any numbers/special content)
-    // Names are typically at the beginning: "John Smith", "Mary Jane Watson", etc.
-    const cleanedText = workingText
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .replace(/[,]/g, "") // Remove commas
-      .trim();
-
-    let extractedName = "";
-    if (cleanedText) {
-      // Match first 2-4 capitalized/lowercase name words (stop at numbers, common non-name words)
-      // This regex captures names like "Andrea vidosh", "Mary Jane O'Connor", "Jean-Pierre Smith"
-      const nameMatch = cleanedText.match(/^([A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*){0,3})/);
-      if (nameMatch) {
-        let name = nameMatch[1].trim();
-        // Limit to first 2-3 words (most names are 2-3 words)
-        const words = name.split(/\s+/);
-        if (words.length > 3) {
-          name = words.slice(0, 3).join(" ");
-        }
-        // Make sure it's not a city name or note keyword by checking against common patterns
-        const lowerName = name.toLowerCase();
-        const isLikelyNotName = /\b(needs?|wants?|looking|request|estimate|quote|service|weekly|monthly)\b/i.test(name);
-        
-        if (name.length >= 2 && name.length < 40 && !isLikelyNotName) {
-          const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
-          if (nameInput) nameInput.value = name;
-          extractedName = name;
-          // Remove extracted name from working text
-          workingText = workingText.replace(name, " ");
-        }
-      }
+    // 7. Extract ZIP
+    const zipMatch = workingText.match(/\b(\d{5})(?:-\d{4})?\b/);
+    if (zipMatch) {
+      const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
+      if (zipInput) zipInput.value = zipMatch[1];
+      workingText = workingText.replace(zipMatch[0], " ");
     }
 
-    // 6. Auto-fill DESCRIPTION with remaining meaningful text
+    // 8. LAST: Everything remaining goes to DESCRIPTION
     const remainingText = workingText
       .replace(/\s+/g, " ") // Normalize whitespace
       .replace(/[,]/g, "") // Remove commas
