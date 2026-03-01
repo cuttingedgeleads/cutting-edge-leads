@@ -1,14 +1,8 @@
-/// <reference lib="webworker" />
-
-declare const self: ServiceWorkerGlobalScope & {
-  __WB_MANIFEST: Array<unknown>;
-};
-
 import { precacheAndRoute } from "workbox-precaching";
 
-const sw = self as unknown as ServiceWorkerGlobalScope;
+const sw = self;
 
-precacheAndRoute(self.__WB_MANIFEST);
+precacheAndRoute(self.__WB_MANIFEST || []);
 
 const BADGE_CACHE = "app-badge";
 const BADGE_URL = "/badge-count";
@@ -26,7 +20,7 @@ async function readBadgeCount() {
   }
 }
 
-async function writeBadgeCount(count: number) {
+async function writeBadgeCount(count) {
   const cache = await caches.open(BADGE_CACHE);
   await cache.put(BADGE_URL, new Response(String(count)));
 }
@@ -43,11 +37,8 @@ sw.addEventListener("push", (event) => {
       const nextCount = previousCount + 1;
       await writeBadgeCount(nextCount);
 
-      const registrationWithBadge = sw.registration as ServiceWorkerRegistration & {
-        setAppBadge?: (count: number) => Promise<void>;
-      };
-
-      if (registrationWithBadge.setAppBadge) {
+      const registrationWithBadge = sw.registration;
+      if (registrationWithBadge?.setAppBadge) {
         await registrationWithBadge.setAppBadge(nextCount);
       }
 

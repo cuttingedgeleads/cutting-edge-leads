@@ -249,6 +249,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       return "unsupported";
     }
 
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS && !isStandalone) {
+      window.alert("Install the app to enable notifications on iOS.");
+      return "default";
+    }
+
     try {
       const result = await Notification.requestPermission();
       setPermission(result);

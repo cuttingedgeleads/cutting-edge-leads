@@ -11,7 +11,7 @@ const withPWA = nextPWA({
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
-  swSrc: "src/worker/index.ts",
+  swSrc: "src/worker/sw.js",
 });
 
 export default withPWA(nextConfig);
