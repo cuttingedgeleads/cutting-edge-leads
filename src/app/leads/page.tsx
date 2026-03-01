@@ -121,8 +121,9 @@ export default async function LeadsPage() {
                     <p className="text-sm text-slate-500">{formatPostedAt(lead.createdAt)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">${lead.price}</p>
-                    <p className="text-xs text-slate-500">{approvedCount}/2 unlocked</p>
+                    <p className="font-semibold">
+                      {isApproved ? `Purchased for $${lead.price}` : `$${lead.price}`}
+                    </p>
                   </div>
                 </div>
                 <p className="text-sm text-slate-700">{lead.description}</p>
