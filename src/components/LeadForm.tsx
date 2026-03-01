@@ -65,58 +65,70 @@ export function LeadForm() {
   function parseQuickPaste(text: string) {
     if (!text.trim()) return;
 
-    // Regex patterns
+    // Working copy that we'll progressively clean as we extract data
+    let workingText = text;
+    
+    // 1. Extract EMAIL first (most reliable, has @)
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
-    const phoneRegex = /(\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}|\d{10})/;
-    const addressRegex = /\d+\s+[A-Za-z0-9\s.,#-]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)(?:\s+[A-Za-z0-9#-]+)?(?:,\s*[A-Za-z\s]+)?/i;
-    
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
-    
-    // Extract email
-    const emailMatch = text.match(emailRegex);
+    const emailMatch = workingText.match(emailRegex);
     if (emailMatch) {
       const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
       if (emailInput) emailInput.value = emailMatch[1];
+      // Remove email from working text
+      workingText = workingText.replace(emailMatch[0], ' ');
     }
 
-    // Extract phone
-    const phoneMatch = text.match(phoneRegex);
+    // 2. Extract PHONE next (before address to prevent digit bleeding)
+    const phoneRegex = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+    const phoneMatch = workingText.match(phoneRegex);
+    let phoneFormatted = '';
     if (phoneMatch) {
       const phoneInput = document.querySelector('input[name="phone"]') as HTMLInputElement;
       if (phoneInput) {
         // Format phone number
-        const digits = phoneMatch[1].replace(/\D/g, '');
-        const formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-        phoneInput.value = formatted;
+        const digits = phoneMatch[0].replace(/\D/g, '');
+        phoneFormatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+        phoneInput.value = phoneFormatted;
       }
+      // Remove phone from working text (critical to prevent address contamination)
+      workingText = workingText.replace(phoneMatch[0], ' ');
     }
 
-    // Extract address
-    const addressMatch = text.match(addressRegex);
+    // 3. Extract ADDRESS from cleaned text (with word boundary before house number)
+    // Now that phone is removed, the address digits won't be contaminated
+    const addressRegex = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
+    const addressMatch = workingText.match(addressRegex);
     if (addressMatch) {
+      const streetAddress = addressMatch[0].trim();
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
-      if (addressInput) {
-        const fullAddress = addressMatch[0];
-        // Try to split city from address
-        const parts = fullAddress.split(',');
-        if (parts.length > 1) {
-          addressInput.value = parts[0].trim();
-          const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
-          if (cityInput) cityInput.value = parts[1].trim();
-        } else {
-          addressInput.value = fullAddress;
-        }
-      }
+      if (addressInput) addressInput.value = streetAddress;
+      // Remove address from working text
+      workingText = workingText.replace(addressMatch[0], ' ');
     }
 
-    // Extract name (first line that's not email/phone/address)
-    for (const line of lines) {
-      if (!emailRegex.test(line) && !phoneRegex.test(line) && !addressRegex.test(line)) {
-        // Check if it looks like a name (contains letters and is reasonably short)
-        if (/^[A-Za-z\s'-]+$/.test(line) && line.length < 50) {
+    // 4. Extract CITY (look for word after comma, or remaining capitalized words)
+    const cityMatch = workingText.match(/,\s*([A-Za-z\s]+)/);
+    if (cityMatch) {
+      const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+      if (cityInput) cityInput.value = cityMatch[1].trim();
+      // Remove city from working text
+      workingText = workingText.replace(cityMatch[0], ' ');
+    }
+
+    // 5. Extract NAME from remaining text (whatever alphabetic text is left)
+    const cleanedText = workingText
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/[,]/g, '') // Remove commas
+      .trim();
+    
+    if (cleanedText) {
+      // Look for name-like patterns (letters, spaces, hyphens, apostrophes)
+      const nameMatch = cleanedText.match(/^([A-Za-z\s'-]+)/);
+      if (nameMatch) {
+        const name = nameMatch[1].trim();
+        if (name.length >= 2 && name.length < 50) {
           const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
-          if (nameInput) nameInput.value = line;
-          break;
+          if (nameInput) nameInput.value = name;
         }
       }
     }
