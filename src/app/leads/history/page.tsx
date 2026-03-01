@@ -9,7 +9,7 @@ function formatPostedAt(date: Date) {
   const datePart = postedAt.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    year: "2-digit",
     timeZone: "America/Chicago",
   });
   const timePart = postedAt.toLocaleTimeString("en-US", {
@@ -81,7 +81,7 @@ export default async function PurchaseHistoryPage() {
                     ? `${purchase.approvedAt.toLocaleDateString("en-US", {
                         month: "short",
                         day: "numeric",
-                        year: "numeric",
+                        year: "2-digit",
                         timeZone: "America/Chicago",
                       })} at ${purchase.approvedAt.toLocaleTimeString("en-US", {
                         hour: "numeric",

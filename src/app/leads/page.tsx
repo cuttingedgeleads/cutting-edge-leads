@@ -16,7 +16,7 @@ function formatPostedAt(date: Date) {
   const datePart = formatCentralDate(date, {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    year: "2-digit",
   });
   const timePart = formatCentralTime(date, {
     hour: "numeric",

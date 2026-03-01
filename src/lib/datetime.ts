@@ -10,6 +10,7 @@ export function formatCentralDateTime(
 ) {
   return new Date(date).toLocaleString(DEFAULT_LOCALE, {
     timeZone: CENTRAL_TIMEZONE,
+    year: "2-digit",
     ...options,
   });
 }
@@ -20,6 +21,7 @@ export function formatCentralDate(
 ) {
   return new Date(date).toLocaleDateString(DEFAULT_LOCALE, {
     timeZone: CENTRAL_TIMEZONE,
+    year: "2-digit",
     ...options,
   });
 }
