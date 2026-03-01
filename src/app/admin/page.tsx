@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 import { AdminHeader } from "@/components/AdminHeader";
 
 type StatusSummary = {
@@ -35,63 +36,37 @@ type ChurnSignal = {
   note: string;
 };
 
-const leadStatuses: StatusSummary[] = [
-  { label: "New", value: 128, color: "bg-sky-100 text-sky-700" },
-  { label: "Claimed", value: 214, color: "bg-indigo-100 text-indigo-700" },
-  { label: "Converted", value: 103, color: "bg-emerald-100 text-emerald-700" },
-  { label: "Dead", value: 37, color: "bg-rose-100 text-rose-700" },
-];
+const MAX_UNLOCKS = 2;
+const CHURN_DAYS = 21;
 
-const topPerformers: Performer[] = [
-  { name: "GreenPro Lawn", conversions: 34, responseHours: 1.8 },
-  { name: "Lone Star Turf", conversions: 29, responseHours: 2.1 },
-  { name: "Sunrise Mowing", conversions: 24, responseHours: 2.4 },
-];
+function isExpired(date: Date) {
+  const expiresAt = new Date(date);
+  expiresAt.setHours(expiresAt.getHours() + 24);
+  return new Date() > expiresAt;
+}
 
-const leadDistribution: Distribution[] = [
-  { contractor: "GreenPro Lawn", leads: 56, share: 18, balance: "Balanced" },
-  { contractor: "Lone Star Turf", leads: 49, share: 16, balance: "Slightly high" },
-  { contractor: "Northside Grounds", leads: 44, share: 14, balance: "Balanced" },
-  { contractor: "Sunrise Mowing", leads: 38, share: 12, balance: "Balanced" },
-  { contractor: "Oak Valley Lawn", leads: 31, share: 10, balance: "Low" },
-];
+function hoursBetween(a: Date, b: Date) {
+  return Math.abs(a.getTime() - b.getTime()) / 36e5;
+}
 
-const geoOverview: GeoSummary[] = [
-  { region: "Dallas, TX", leads: 120, conversionRate: 26, topService: "Weekly mowing" },
-  { region: "Plano, TX", leads: 94, conversionRate: 22, topService: "Seasonal cleanup" },
-  { region: "Frisco, TX", leads: 82, conversionRate: 19, topService: "Fertilization" },
-  { region: "Irving, TX", leads: 66, conversionRate: 23, topService: "Weekly mowing" },
-];
+function formatDaysAgo(date: Date | null) {
+  if (!date) return "Never";
+  const diffMs = Date.now() - date.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+  if (diffDays <= 0) return "Today";
+  if (diffDays === 1) return "1 day ago";
+  return `${diffDays} days ago`;
+}
 
-const churnSignals: ChurnSignal[] = [
-  {
-    contractor: "Lone Star Turf",
-    lastLogin: "24 days ago",
-    conversionDelta: "-8%",
-    note: "Declining conversion rate",
-  },
-  {
-    contractor: "Prairie Lawn Care",
-    lastLogin: "31 days ago",
-    conversionDelta: "-5%",
-    note: "Low lead response",
-  },
-  {
-    contractor: "Oak Valley Lawn",
-    lastLogin: "18 days ago",
-    conversionDelta: "-6%",
-    note: "Fewer follow-ups",
-  },
-];
+function median(values: number[]) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+}
 
-function StatCard({ label, value, helper }: { label: string; value: string; helper?: string }) {
-  return (
-    <div className="rounded-2xl border bg-white p-4 shadow-sm">
-      <p className="text-xs font-semibold uppercase text-slate-400">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-500">{helper}</p> : null}
-    </div>
-  );
+function formatContractorName(name: string, businessName?: string | null) {
+  return businessName?.trim() ? businessName : name;
 }
 
 export default async function AdminDashboardPage() {
@@ -99,8 +74,183 @@ export default async function AdminDashboardPage() {
   if (!session) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/");
 
-  const totalLeads = leadStatuses.reduce((sum, status) => sum + status.value, 0);
-  const conversionRate = ((leadStatuses[2]?.value || 0) / totalLeads) * 100;
+  const now = new Date();
+  const last30 = new Date(now);
+  last30.setDate(last30.getDate() - 30);
+  const last60 = new Date(now);
+  last60.setDate(last60.getDate() - 60);
+
+  const [leadsLast30, contractors, approvedUnlocks, unlocks] = await Promise.all([
+    prisma.lead.findMany({
+      where: { createdAt: { gte: last30 } },
+      include: { unlocks: { where: { status: "APPROVED" } } },
+    }),
+    prisma.user.findMany({ where: { role: "CONTRACTOR" }, include: { unlocks: true } }),
+    prisma.leadUnlockRequest.findMany({
+      where: { status: "APPROVED" },
+      include: { lead: true, contractor: true },
+    }),
+    prisma.leadUnlockRequest.findMany({
+      include: { lead: true, contractor: true },
+    }),
+  ]);
+
+  const totalLeads = leadsLast30.length;
+
+  const leadStatuses: StatusSummary[] = [
+    { label: "New", value: 0, color: "bg-sky-100 text-sky-700" },
+    { label: "Claimed", value: 0, color: "bg-indigo-100 text-indigo-700" },
+    { label: "Converted", value: 0, color: "bg-emerald-100 text-emerald-700" },
+    { label: "Dead", value: 0, color: "bg-rose-100 text-rose-700" },
+  ];
+
+  leadsLast30.forEach((lead) => {
+    const approvedCount = lead.unlocks.length;
+    if (approvedCount >= MAX_UNLOCKS) {
+      leadStatuses[2].value += 1;
+      return;
+    }
+    if (approvedCount > 0) {
+      leadStatuses[1].value += 1;
+      return;
+    }
+    if (isExpired(lead.createdAt)) {
+      leadStatuses[3].value += 1;
+      return;
+    }
+    leadStatuses[0].value += 1;
+  });
+
+  const conversionRate = totalLeads
+    ? (leadStatuses[2]?.value || 0) / totalLeads
+    : 0;
+
+  const activeContractorIds = new Set(
+    unlocks.filter((unlock) => unlock.createdAt >= last30).map((unlock) => unlock.contractorId),
+  );
+  const activeContractors = activeContractorIds.size;
+  const inactiveContractors = Math.max(0, contractors.length - activeContractors);
+
+  const approvedRecent = approvedUnlocks.filter((unlock) => unlock.createdAt >= last30);
+  const responseTimes = approvedRecent.map((unlock) => hoursBetween(unlock.createdAt, unlock.lead.createdAt));
+  const medianResponse = median(responseTimes);
+
+  const approvalsByContractor = new Map<string, {
+    name: string;
+    businessName?: string | null;
+    conversions: number;
+    responseHours: number[];
+  }>();
+
+  approvedRecent.forEach((unlock) => {
+    const current = approvalsByContractor.get(unlock.contractorId) || {
+      name: unlock.contractor.name,
+      businessName: unlock.contractor.businessName,
+      conversions: 0,
+      responseHours: [],
+    };
+    current.conversions += 1;
+    current.responseHours.push(hoursBetween(unlock.createdAt, unlock.lead.createdAt));
+    approvalsByContractor.set(unlock.contractorId, current);
+  });
+
+  const topPerformers: Performer[] = Array.from(approvalsByContractor.values())
+    .sort((a, b) => b.conversions - a.conversions)
+    .slice(0, 3)
+    .map((performer) => ({
+      name: formatContractorName(performer.name, performer.businessName),
+      conversions: performer.conversions,
+      responseHours: performer.responseHours.length
+        ? Math.round((performer.responseHours.reduce((sum, value) => sum + value, 0) / performer.responseHours.length) * 10) / 10
+        : 0,
+    }));
+
+  const totalApprovedRecent = approvedRecent.length;
+  const averageShare = contractors.length ? totalApprovedRecent / contractors.length : 0;
+
+  const leadDistribution: Distribution[] = contractors
+    .map((contractor) => {
+      const approvals = approvedRecent.filter((unlock) => unlock.contractorId === contractor.id).length;
+      const share = totalApprovedRecent ? Math.round((approvals / totalApprovedRecent) * 100) : 0;
+      let balance = "Balanced";
+      if (averageShare > 0) {
+        if (approvals > averageShare * 1.2) balance = "Slightly high";
+        if (approvals < averageShare * 0.8) balance = "Low";
+      }
+      return {
+        contractor: formatContractorName(contractor.name, contractor.businessName),
+        leads: approvals,
+        share,
+        balance,
+      };
+    })
+    .filter((item) => item.leads > 0)
+    .sort((a, b) => b.leads - a.leads)
+    .slice(0, 5);
+
+  const geoMap = new Map<string, { leads: number; converted: number; jobCounts: Record<string, number> }>();
+
+  leadsLast30.forEach((lead) => {
+    const city = lead.city?.trim();
+    const state = lead.state?.trim();
+    const zip = lead.zip?.trim();
+    const region = city && state ? `${city}, ${state}` : zip ? `Zip ${zip}` : "Unknown";
+    const current = geoMap.get(region) || { leads: 0, converted: 0, jobCounts: {} };
+    current.leads += 1;
+    if (lead.unlocks.length > 0) current.converted += 1;
+    current.jobCounts[lead.jobType] = (current.jobCounts[lead.jobType] || 0) + 1;
+    geoMap.set(region, current);
+  });
+
+  const geoOverview: GeoSummary[] = Array.from(geoMap.entries())
+    .map(([region, data]) => {
+      const topService = Object.entries(data.jobCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+      return {
+        region,
+        leads: data.leads,
+        conversionRate: data.leads ? Math.round((data.converted / data.leads) * 100) : 0,
+        topService,
+      };
+    })
+    .sort((a, b) => b.leads - a.leads)
+    .slice(0, 4);
+
+  const churnSignals: ChurnSignal[] = contractors
+    .map((contractor) => {
+      const contractorUnlocks = unlocks.filter((unlock) => unlock.contractorId === contractor.id);
+      const lastActivity = contractorUnlocks.length
+        ? contractorUnlocks.reduce((latest, unlock) => (unlock.createdAt > latest ? unlock.createdAt : latest), contractorUnlocks[0].createdAt)
+        : null;
+      const recentCount = contractorUnlocks.filter((unlock) => unlock.createdAt >= last30).length;
+      const prevCount = contractorUnlocks.filter(
+        (unlock) => unlock.createdAt < last30 && unlock.createdAt >= last60,
+      ).length;
+      let conversionDelta = "—";
+      if (prevCount > 0) {
+        const delta = Math.round(((recentCount - prevCount) / prevCount) * 100);
+        conversionDelta = `${delta > 0 ? "+" : ""}${delta}%`;
+      }
+      const daysSince = lastActivity ? Math.floor((now.getTime() - lastActivity.getTime()) / (24 * 60 * 60 * 1000)) : null;
+      return {
+        contractor: formatContractorName(contractor.name, contractor.businessName),
+        lastLogin: formatDaysAgo(lastActivity),
+        conversionDelta,
+        note: lastActivity
+          ? `No unlocks in ${daysSince ?? 0} days`
+          : "No unlocks yet",
+        daysSince: daysSince ?? 9999,
+        recentCount,
+      };
+    })
+    .filter((signal) => signal.recentCount === 0 || signal.daysSince >= CHURN_DAYS)
+    .sort((a, b) => b.daysSince - a.daysSince)
+    .slice(0, 3)
+    .map(({ contractor, lastLogin, conversionDelta, note }) => ({
+      contractor,
+      lastLogin,
+      conversionDelta,
+      note,
+    }));
 
   return (
     <div className="min-h-screen">
@@ -117,11 +267,19 @@ export default async function AdminDashboardPage() {
             <StatCard label="Total leads" value={totalLeads.toLocaleString()} helper="Last 30 days" />
             <StatCard
               label="Conversion rate"
-              value={`${conversionRate.toFixed(1)}%`}
+              value={`${(conversionRate * 100).toFixed(1)}%`}
               helper="Converted / total leads"
             />
-            <StatCard label="Active contractors" value="42" helper="+4 this month" />
-            <StatCard label="Avg response time" value="2.3 hrs" helper="Median response" />
+            <StatCard
+              label="Active contractors"
+              value={activeContractors.toLocaleString()}
+              helper={`${inactiveContractors} inactive`}
+            />
+            <StatCard
+              label="Avg response time"
+              value={medianResponse ? `${medianResponse.toFixed(1)} hrs` : "—"}
+              helper="Median response"
+            />
           </div>
         </section>
 
@@ -148,10 +306,10 @@ export default async function AdminDashboardPage() {
             <h3 className="text-lg font-semibold">Revenue</h3>
             <p className="text-sm text-slate-500">Recurring revenue from active contractors.</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <StatCard label="MRR" value="$18,450" helper="+6.2% MoM" />
-              <StatCard label="Total revenue" value="$242,300" helper="YTD" />
-              <StatCard label="Growth" value="+12.4%" helper="Quarterly" />
-              <StatCard label="Churn impact" value="-$1,120" helper="Last 30 days" />
+              <StatCard label="MRR" value="$0" helper="Billing not configured" />
+              <StatCard label="Total revenue" value="$0" helper="Billing not configured" />
+              <StatCard label="Growth" value="—" helper="Billing not configured" />
+              <StatCard label="Churn impact" value="—" helper="Billing not configured" />
             </div>
           </div>
         </section>
@@ -163,25 +321,29 @@ export default async function AdminDashboardPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border px-4 py-3">
                 <p className="text-xs font-semibold uppercase text-slate-400">Active contractors</p>
-                <p className="mt-2 text-2xl font-semibold">42</p>
+                <p className="mt-2 text-2xl font-semibold">{activeContractors}</p>
               </div>
               <div className="rounded-xl border px-4 py-3">
                 <p className="text-xs font-semibold uppercase text-slate-400">Inactive contractors</p>
-                <p className="mt-2 text-2xl font-semibold">8</p>
+                <p className="mt-2 text-2xl font-semibold">{inactiveContractors}</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border px-4 py-3">
               <p className="text-xs font-semibold uppercase text-slate-400">Top performers</p>
               <div className="mt-3 space-y-3">
-                {topPerformers.map((performer) => (
-                  <div key={performer.name} className="flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-medium text-slate-900">{performer.name}</p>
-                      <p className="text-xs text-slate-500">Avg response {performer.responseHours} hrs</p>
+                {topPerformers.length ? (
+                  topPerformers.map((performer) => (
+                    <div key={performer.name} className="flex items-center justify-between text-sm">
+                      <div>
+                        <p className="font-medium text-slate-900">{performer.name}</p>
+                        <p className="text-xs text-slate-500">Avg response {performer.responseHours} hrs</p>
+                      </div>
+                      <p className="font-semibold text-slate-700">{performer.conversions} conversions</p>
                     </div>
-                    <p className="font-semibold text-slate-700">{performer.conversions} conversions</p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No conversions yet.</p>
+                )}
               </div>
             </div>
           </div>
@@ -190,20 +352,24 @@ export default async function AdminDashboardPage() {
             <h3 className="text-lg font-semibold">Lead distribution</h3>
             <p className="text-sm text-slate-500">Which contractors are receiving leads.</p>
             <div className="mt-4 space-y-3">
-              {leadDistribution.map((item) => (
-                <div key={item.contractor} className="rounded-xl border px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-slate-900">{item.contractor}</p>
-                      <p className="text-xs text-slate-500">{item.share}% share of leads</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold">{item.leads} leads</p>
-                      <p className="text-xs text-slate-500">{item.balance}</p>
+              {leadDistribution.length ? (
+                leadDistribution.map((item) => (
+                  <div key={item.contractor} className="rounded-xl border px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-slate-900">{item.contractor}</p>
+                        <p className="text-xs text-slate-500">{item.share}% share of leads</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold">{item.leads} leads</p>
+                        <p className="text-xs text-slate-500">{item.balance}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No approved unlocks yet.</p>
+              )}
             </div>
           </div>
         </section>
@@ -213,18 +379,22 @@ export default async function AdminDashboardPage() {
             <h3 className="text-lg font-semibold">Geographic overview</h3>
             <p className="text-sm text-slate-500">Lead origin by market.</p>
             <div className="mt-4 space-y-3">
-              {geoOverview.map((geo) => (
-                <div key={geo.region} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3">
-                  <div>
-                    <p className="font-medium text-slate-900">{geo.region}</p>
-                    <p className="text-xs text-slate-500">Top service: {geo.topService}</p>
+              {geoOverview.length ? (
+                geoOverview.map((geo) => (
+                  <div key={geo.region} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3">
+                    <div>
+                      <p className="font-medium text-slate-900">{geo.region}</p>
+                      <p className="text-xs text-slate-500">Top service: {geo.topService}</p>
+                    </div>
+                    <div className="text-right text-sm">
+                      <p className="font-semibold">{geo.leads} leads</p>
+                      <p className="text-xs text-slate-500">{geo.conversionRate}% conversion</p>
+                    </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <p className="font-semibold">{geo.leads} leads</p>
-                    <p className="text-xs text-slate-500">{geo.conversionRate}% conversion</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No leads in the last 30 days.</p>
+              )}
             </div>
           </div>
 
@@ -232,24 +402,38 @@ export default async function AdminDashboardPage() {
             <h3 className="text-lg font-semibold">Churn signals</h3>
             <p className="text-sm text-slate-500">Contractors showing early risk.</p>
             <div className="mt-4 space-y-3">
-              {churnSignals.map((signal) => (
-                <div key={signal.contractor} className="rounded-xl border px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="font-medium text-slate-900">{signal.contractor}</p>
-                      <p className="text-xs text-slate-500">Last login {signal.lastLogin}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-rose-600">{signal.conversionDelta}</p>
-                      <p className="text-xs text-slate-500">{signal.note}</p>
+              {churnSignals.length ? (
+                churnSignals.map((signal) => (
+                  <div key={signal.contractor} className="rounded-xl border px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-slate-900">{signal.contractor}</p>
+                        <p className="text-xs text-slate-500">Last login {signal.lastLogin}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-rose-600">{signal.conversionDelta}</p>
+                        <p className="text-xs text-slate-500">{signal.note}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No churn signals detected.</p>
+              )}
             </div>
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+function StatCard({ label, value, helper }: { label: string; value: string; helper?: string }) {
+  return (
+    <div className="rounded-2xl border bg-white p-4 shadow-sm">
+      <p className="text-xs font-semibold uppercase text-slate-400">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      {helper ? <p className="mt-1 text-xs text-slate-500">{helper}</p> : null}
     </div>
   );
 }
