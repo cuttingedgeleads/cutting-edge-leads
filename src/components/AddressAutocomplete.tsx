@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 type GoogleMaps = typeof google;
 
-export function AddressAutocomplete() {
+type AddressAutocompleteProps = {
+  className?: string;
+};
+
+export function AddressAutocomplete({ className }: AddressAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [enabled] = useState(Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY));
@@ -83,7 +87,7 @@ export function AddressAutocomplete() {
       <input
         name="address"
         id="address"
-        className="mt-1 w-full rounded-lg border px-3 py-2"
+        className={`mt-1 w-full rounded-lg border px-3 py-2 ${className || ""}`.trim()}
         required
       />
     );
@@ -95,7 +99,7 @@ export function AddressAutocomplete() {
       name="address"
       id="address"
       type="text"
-      className="mt-1 w-full rounded-lg border px-3 py-2"
+      className={`mt-1 w-full rounded-lg border px-3 py-2 ${className || ""}`.trim()}
       placeholder="Start typing an address"
       autoComplete="off"
       required

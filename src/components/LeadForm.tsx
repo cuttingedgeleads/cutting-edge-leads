@@ -9,6 +9,13 @@ const MIN_PRICE = 20;
 const MAX_IMAGE_SIZE = 800; // Max width/height in pixels
 const IMAGE_QUALITY = 0.7; // JPEG quality (0-1)
 
+const toTitleCase = (value: string) => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+};
+
 // Compress image using canvas
 async function compressImage(file: File): Promise<File> {
   return new Promise((resolve) => {
@@ -60,7 +67,11 @@ export function LeadForm() {
   const photoInputRef = useRef<LeadPhotoInputRef>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [validationMessage, setValidationMessage] = useState("");
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [quickPasteText, setQuickPasteText] = useState("");
+
+  const fieldHasError = (fieldName: string) => validationErrors.includes(fieldName);
 
   function parseQuickPaste(text: string) {
     // v6 - Known city list for New Orleans / Jefferson Parish area
@@ -152,32 +163,11 @@ export function LeadForm() {
         const match = lowerText.match(cityPattern);
         if (match) {
           // Return properly capitalized city name
-          const properCity = city.split(/[\s-]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          const properCity = toTitleCase(city);
           return { city: properCity, match: match[0] };
         }
       }
       return null;
-    };
-
-    const stateNameToAbbr: Record<string, string> = {
-      alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
-      colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
-      hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
-      kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
-      massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO",
-      montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ",
-      "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND",
-      ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI",
-      "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT",
-      vermont: "VT", virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI",
-      wyoming: "WY", "district of columbia": "DC",
-    };
-
-    const normalizeState = (value: string) => {
-      const trimmed = value.trim();
-      if (trimmed.length === 2) return trimmed.toUpperCase();
-      const key = trimmed.toLowerCase().replace(/\s+/g, " ");
-      return stateNameToAbbr[key] || "";
     };
 
     // Working copy that we'll progressively clean as we extract data
@@ -187,7 +177,7 @@ export function LeadForm() {
     // Names can be "John Smith", "Mary J", "Jean-Pierre O'Connor"
     const nameMatch = workingText.match(/^([A-Za-z][A-Za-z'-]*)\s+([A-Za-z][A-Za-z'-]*)/);
     if (nameMatch) {
-      const fullName = `${nameMatch[1]} ${nameMatch[2]}`;
+      const fullName = toTitleCase(`${nameMatch[1]} ${nameMatch[2]}`);
       const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
       if (nameInput) nameInput.value = fullName;
       // Remove name from working text
@@ -234,7 +224,7 @@ export function LeadForm() {
     }
     if (addressMatch) {
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
-      if (addressInput) addressInput.value = addressMatch[0].trim();
+      if (addressInput) addressInput.value = toTitleCase(addressMatch[0].trim());
       workingText = workingText.replace(addressMatch[0], " ");
     }
 
@@ -283,7 +273,7 @@ export function LeadForm() {
       // Only fill description if there's meaningful text left (at least 5 chars)
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
       if (descriptionInput) {
-        descriptionInput.value = remainingText;
+        descriptionInput.value = toTitleCase(remainingText);
       }
     }
 
@@ -295,6 +285,8 @@ export function LeadForm() {
     event.preventDefault();
     setIsSubmitting(true);
     setError("");
+    setValidationMessage("");
+    setValidationErrors([]);
 
     try {
       const form = event.currentTarget;
@@ -305,6 +297,51 @@ export function LeadForm() {
         formData = new FormData(form);
       } catch (e) {
         setError("Error creating form data: " + (e instanceof Error ? e.message : String(e)));
+        return;
+      }
+
+      const normalizedState = normalizeState(String(formData.get("state") || ""));
+      if (normalizedState) {
+        formData.set("state", normalizedState);
+      }
+
+      const titleCaseFields = ["name", "description", "address", "city"];
+      titleCaseFields.forEach((field) => {
+        const value = String(formData.get(field) || "").trim();
+        if (value) {
+          formData.set(field, toTitleCase(value));
+        }
+      });
+
+      const requiredFields = [
+        { name: "name", label: "Name" },
+        { name: "phone", label: "Phone" },
+        { name: "jobType", label: "Job type" },
+        { name: "price", label: "Price" },
+        { name: "description", label: "Description" },
+        { name: "address", label: "Street address" },
+        { name: "city", label: "City" },
+        { name: "state", label: "State" },
+        { name: "zip", label: "Zip" },
+      ];
+
+      const missingFields = requiredFields.filter((field) => {
+        if (field.name === "price") {
+          const priceValue = Number(formData.get("price") || 0);
+          return Number.isNaN(priceValue) || priceValue < MIN_PRICE;
+        }
+        const value = String(formData.get(field.name) || "").trim();
+        return !value;
+      });
+
+      if (missingFields.length > 0) {
+        setValidationErrors(missingFields.map((field) => field.name));
+        setValidationMessage(
+          `Please fill out the following fields: ${missingFields
+            .map((field) => field.label)
+            .join(", ")}.`
+        );
+        setIsSubmitting(false);
         return;
       }
       
@@ -369,6 +406,8 @@ export function LeadForm() {
       // Step 5: Success - refresh
       photoInputRef.current?.clear();
       form.reset();
+      setValidationMessage("");
+      setValidationErrors([]);
       router.refresh();
     } catch (err) {
       console.error("Submit error:", err);
@@ -414,7 +453,7 @@ export function LeadForm() {
         <label className="text-sm font-medium">Name</label>
         <input
           name="name"
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("name") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           placeholder="Customer name"
           required
         />
@@ -433,14 +472,18 @@ export function LeadForm() {
         <input
           name="phone"
           type="tel"
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("phone") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           placeholder="(555) 123-4567"
           required
         />
       </div>
       <div>
         <label className="text-sm font-medium">Job type</label>
-        <select name="jobType" className="mt-1 w-full rounded-lg border px-3 py-2" required>
+        <select
+          name="jobType"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("jobType") ? "border-red-500 ring-1 ring-red-500" : ""}`}
+          required
+        >
           <option value="">Select a job type</option>
           <option value="Grass Cutting">Grass Cutting</option>
           <option value="Landscaping">Landscaping</option>
@@ -455,7 +498,7 @@ export function LeadForm() {
           name="price"
           type="number"
           min={MIN_PRICE}
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("price") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         />
       </div>
@@ -464,20 +507,22 @@ export function LeadForm() {
         <textarea
           name="description"
           rows={4}
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("description") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         />
       </div>
       <div className="sm:col-span-2">
         <label className="text-sm font-medium">Street address</label>
-        <AddressAutocomplete />
+        <AddressAutocomplete
+          className={fieldHasError("address") ? "border-red-500 ring-1 ring-red-500" : ""}
+        />
       </div>
       <div>
         <label className="text-sm font-medium">City</label>
         <input
           name="city"
           id="city"
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("city") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         />
       </div>
@@ -486,7 +531,7 @@ export function LeadForm() {
         <input
           name="state"
           id="state"
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("state") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         />
       </div>
@@ -495,7 +540,7 @@ export function LeadForm() {
         <input
           name="zip"
           id="zip"
-          className="mt-1 w-full rounded-lg border px-3 py-2"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("zip") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         />
       </div>
@@ -504,6 +549,12 @@ export function LeadForm() {
         <LeadPhotoInput ref={photoInputRef} />
       </div>
       
+      {validationMessage && (
+        <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {validationMessage}
+        </div>
+      )}
+
       {error && (
         <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -522,3 +573,4 @@ export function LeadForm() {
     </form>
   );
 }
+

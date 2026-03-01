@@ -8,6 +8,35 @@ import { sendNewLeadEmail } from "@/lib/email";
 
 const MIN_PRICE = 20;
 
+const stateNameToAbbr: Record<string, string> = {
+  alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
+  colorado: "CO", connecticut: "CT", delaware: "DE", florida: "FL", georgia: "GA",
+  hawaii: "HI", idaho: "ID", illinois: "IL", indiana: "IN", iowa: "IA",
+  kansas: "KS", kentucky: "KY", louisiana: "LA", maine: "ME", maryland: "MD",
+  massachusetts: "MA", michigan: "MI", minnesota: "MN", mississippi: "MS", missouri: "MO",
+  montana: "MT", nebraska: "NE", nevada: "NV", "new hampshire": "NH", "new jersey": "NJ",
+  "new mexico": "NM", "new york": "NY", "north carolina": "NC", "north dakota": "ND",
+  ohio: "OH", oklahoma: "OK", oregon: "OR", pennsylvania: "PA", "rhode island": "RI",
+  "south carolina": "SC", "south dakota": "SD", tennessee: "TN", texas: "TX", utah: "UT",
+  vermont: "VT", virginia: "VA", washington: "WA", "west virginia": "WV", wisconsin: "WI",
+  wyoming: "WY", "district of columbia": "DC",
+};
+
+const normalizeState = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (trimmed.length === 2) return trimmed.toUpperCase();
+  const key = trimmed.toLowerCase().replace(/\s+/g, " ");
+  return stateNameToAbbr[key] || "";
+};
+
+const toTitleCase = (value: string) => {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase());
+};
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getSession();
@@ -17,15 +46,21 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     
-    const name = String(formData.get("name") || "").trim();
+    const rawName = String(formData.get("name") || "").trim();
     const email = String(formData.get("email") || "").trim().toLowerCase();
     const phone = String(formData.get("phone") || "").trim();
     const jobType = String(formData.get("jobType") || "").trim();
-    const description = String(formData.get("description") || "").trim();
-    const address = String(formData.get("address") || "").trim();
-    const city = String(formData.get("city") || "").trim();
-    const state = String(formData.get("state") || "").trim();
+    const rawDescription = String(formData.get("description") || "").trim();
+    const rawAddress = String(formData.get("address") || "").trim();
+    const rawCity = String(formData.get("city") || "").trim();
+    const rawState = String(formData.get("state") || "").trim();
     const zip = String(formData.get("zip") || "").trim();
+
+    const name = rawName ? toTitleCase(rawName) : "";
+    const description = rawDescription ? toTitleCase(rawDescription) : "";
+    const address = rawAddress ? toTitleCase(rawAddress) : "";
+    const city = rawCity ? toTitleCase(rawCity) : "";
+    const state = normalizeState(rawState);
     const price = Number(formData.get("price") || 0);
     const photoFiles = formData.getAll("photos").filter((file): file is File => {
       return file instanceof File && file.size > 0;
