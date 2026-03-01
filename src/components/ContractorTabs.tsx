@@ -4,7 +4,6 @@ export function ContractorTabs() {
   const tabs = [
     { href: "/leads", label: "Available Leads" },
     { href: "/leads/history", label: "Purchased Leads" },
-    { href: "/profile", label: "Profile" },
   ];
 
   return (
