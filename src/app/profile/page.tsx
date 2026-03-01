@@ -3,7 +3,6 @@ import { compare, hash } from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
-import { ContractorTabs } from "@/components/ContractorTabs";
 
 async function updateName(formData: FormData) {
   "use server";
@@ -170,8 +169,6 @@ export default async function ProfilePage() {
     <div className="min-h-screen">
       <NavBar name={session.user.name} role={session.user.role} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
-        <ContractorTabs />
-
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div>
             <h2 className="text-xl font-semibold">Profile</h2>

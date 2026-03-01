@@ -14,17 +14,31 @@ export function NavBar({ name, role }: { name?: string | null; role?: string }) 
           <p className="font-semibold">Welcome, {name || "User"}</p>
           <span className="text-xs text-slate-500">{role}</span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {role === "CONTRACTOR" && (
-            <Link
-              href="/profile"
-              className="flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white text-xs font-semibold">
-                {initial}
-              </span>
-              <span>Profile</span>
-            </Link>
+            <>
+              <Link
+                href="/leads"
+                className="rounded-full border px-3 py-1 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
+              >
+                Available Leads
+              </Link>
+              <Link
+                href="/leads/history"
+                className="rounded-full border px-3 py-1 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
+              >
+                Purchased Leads
+              </Link>
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white text-xs font-semibold">
+                  {initial}
+                </span>
+                <span>Profile</span>
+              </Link>
+            </>
           )}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}

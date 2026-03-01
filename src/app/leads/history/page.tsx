@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
-import { ContractorTabs } from "@/components/ContractorTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 
 function formatPostedAt(date: Date) {
@@ -36,7 +35,6 @@ export default async function PurchaseHistoryPage() {
     <div className="min-h-screen">
       <NavBar name={session.user.name} role={session.user.role} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <ContractorTabs />
         <header className="space-y-2">
           <h2 className="text-xl font-semibold">Purchased leads</h2>
           <p className="text-sm text-slate-600">All approved lead unlocks.</p>

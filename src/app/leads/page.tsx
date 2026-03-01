@@ -3,7 +3,6 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCentralDate, formatCentralTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
-import { ContractorTabs } from "@/components/ContractorTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UnlockButton } from "@/components/UnlockButton";
 
@@ -82,7 +81,6 @@ export default async function LeadsPage() {
     <div className="min-h-screen">
       <NavBar name={session.user.name} role={session.user.role} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
-        <ContractorTabs />
         <header className="space-y-2">
           <h2 className="text-xl font-semibold">Available leads</h2>
           <p className="text-sm text-slate-600">
