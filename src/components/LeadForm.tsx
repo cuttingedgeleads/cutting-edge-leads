@@ -149,13 +149,21 @@ export function LeadForm() {
     }
 
     // 2. Extract PHONE next (before address to prevent digit bleeding)
-    const phoneRegex = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
-    const phoneMatch = workingText.match(phoneRegex);
+    // Match phone with optional +1/1 prefix - use two patterns to ensure we catch the prefix
+    const phoneWithPrefixRegex = /(\+1|1)[\s.-]?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+    const phoneBasicRegex = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+    
+    // Try to match with prefix first, then without
+    let phoneMatch = workingText.match(phoneWithPrefixRegex);
+    if (!phoneMatch) {
+      phoneMatch = workingText.match(phoneBasicRegex);
+    }
+    
     let phoneFormatted = "";
     if (phoneMatch) {
       const phoneInput = document.querySelector('input[name="phone"]') as HTMLInputElement;
       if (phoneInput) {
-        // Format phone number
+        // Format phone number - extract just the 10 digits
         let digits = phoneMatch[0].replace(/\D/g, "");
         if (digits.length === 11 && digits.startsWith("1")) {
           digits = digits.slice(1);
@@ -165,7 +173,7 @@ export function LeadForm() {
           phoneInput.value = phoneFormatted;
         }
       }
-      // Remove phone from working text (critical to prevent address contamination)
+      // Remove ENTIRE phone match from working text (including +1 prefix)
       workingText = workingText.replace(phoneMatch[0], " ");
     }
 
