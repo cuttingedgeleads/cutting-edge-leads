@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { formatCentralDateTime } from "@/lib/datetime";
+import { formatCentralDate, formatCentralDateTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -48,10 +48,38 @@ export default async function AdminLeadsPage() {
               const soldOut = approvedCount >= 2;
               return (
                 <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
-                  <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                    Price ${lead.price}
+                  <div className="absolute right-4 top-4 text-right space-y-1">
+                    <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                      Price ${lead.price}
+                    </div>
+                    <div className="text-xs text-slate-600">
+                      <p className="font-semibold text-slate-700">
+                        {approvedCount} unlock{approvedCount === 1 ? "" : "s"}
+                      </p>
+                      {lead.unlocks.length > 0 ? (
+                        <ul className="mt-1 space-y-1">
+                          {lead.unlocks.map((unlock) => {
+                            const contractorLabel =
+                              unlock.contractor.businessName?.trim() || unlock.contractor.name;
+                            const unlockedDate = unlock.approvedAt ?? unlock.createdAt;
+                            return (
+                              <li key={unlock.id}>
+                                - {contractorLabel} ({
+                                  formatCentralDate(unlockedDate, {
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                })
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : (
+                        <p className="mt-1 text-slate-400">No unlocks yet.</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap justify-between gap-2">
+                  <div className="flex flex-wrap justify-between gap-2 pt-12">
                     <div>
                       <p className="font-semibold">{lead.jobType}</p>
                       <p className="text-sm text-slate-700">{lead.name}</p>
@@ -62,22 +90,9 @@ export default async function AdminLeadsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-slate-500">{approvedCount}/2 unlocks</p>
                       <p className="text-xs text-slate-500">
                         Posted {formatCentralDateTime(lead.createdAt)}
                       </p>
-                      {lead.unlocks.length > 0 ? (
-                        <ul className="mt-1 space-y-1 text-xs text-slate-500">
-                          {lead.unlocks.map((unlock) => (
-                            <li key={unlock.id}>
-                              {unlock.contractor.name}{" • "}
-                              {unlock.approvedAt ? formatCentralDateTime(unlock.approvedAt) : "Approved"}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-xs text-slate-400 mt-1">No purchasers yet.</p>
-                      )}
                     </div>
                   </div>
                   <p className="text-sm text-slate-700">{lead.description}</p>
