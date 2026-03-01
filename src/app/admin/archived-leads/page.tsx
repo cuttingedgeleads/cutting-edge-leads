@@ -54,8 +54,11 @@ export default async function ArchivedLeadsPage() {
             </div>
           ) : null}
           {archivedLeads.map((lead) => (
-            <div key={lead.id} className="bg-white rounded-xl border p-4 space-y-3">
-              <div className="flex flex-wrap justify-between gap-2">
+            <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
+              <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                Price ${lead.price}
+              </div>
+              <div className="flex flex-wrap justify-between gap-2 pt-8">
                 <div>
                   <p className="font-semibold">{lead.jobType}</p>
                   <p className="text-sm text-slate-700">{lead.name}</p>
@@ -65,7 +68,6 @@ export default async function ArchivedLeadsPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">${lead.price}</p>
                   <p className="text-xs text-slate-500">
                     Posted {formatCentralDateTime(lead.createdAt)}
                   </p>

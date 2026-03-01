@@ -47,8 +47,11 @@ export default async function AdminLeadsPage() {
               const expired = isExpired(lead.createdAt);
               const soldOut = approvedCount >= 2;
               return (
-                <div key={lead.id} className="bg-white rounded-xl border p-4 space-y-3">
-                  <div className="flex flex-wrap justify-between gap-2">
+                <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
+                  <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                    Price ${lead.price}
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-2 pt-8">
                     <div>
                       <p className="font-semibold">{lead.jobType}</p>
                       <p className="text-sm text-slate-700">{lead.name}</p>
@@ -60,7 +63,6 @@ export default async function AdminLeadsPage() {
                     </div>
                     <div className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <p className="font-semibold">${lead.price}</p>
                         <DeleteLeadButton leadId={lead.id} />
                       </div>
                       <p className="text-xs text-slate-500">{approvedCount}/2 unlocks</p>
