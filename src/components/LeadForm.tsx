@@ -244,8 +244,11 @@ export function LeadForm() {
       addressMatch = workingText.match(addressRegexLoose);
     }
     if (!addressMatch) {
-      // Fallback: any number followed by at least one word (e.g., "5201 Meadowdale")
-      const addressNumberWordRegex = /\b\d+\s+[A-Za-z][A-Za-z0-9.-]*(?:\s+[A-Za-z0-9.-]+)*/;
+      // Fallback: number + 1-2 words max (avoid grabbing description text)
+      const addressNumberWordRegex = new RegExp(
+        "\\b\\d+\\s+[A-Za-z]+(?:\\s+(?:[A-Za-z]+|St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Ct|Court|Way|Pl|Place|Cir|Circle))?\\b",
+        "i"
+      );
       addressMatch = workingText.match(addressNumberWordRegex);
     }
     if (addressMatch) {
