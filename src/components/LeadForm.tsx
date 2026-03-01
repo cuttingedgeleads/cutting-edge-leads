@@ -63,6 +63,7 @@ export function LeadForm() {
   const [quickPasteText, setQuickPasteText] = useState("");
 
   function parseQuickPaste(text: string) {
+    // v2 - Fixed 2026-02-28 18:35
     if (!text.trim()) return;
 
     // Working copy that we'll progressively clean as we extract data
