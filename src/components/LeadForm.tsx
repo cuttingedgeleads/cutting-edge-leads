@@ -97,8 +97,16 @@ export function LeadForm() {
 
     // 3. Extract ADDRESS from cleaned text (with word boundary before house number)
     // Now that phone is removed, the address digits won't be contaminated
-    const addressRegex = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
-    const addressMatch = workingText.match(addressRegex);
+    // Try strict regex WITH suffix first
+    const addressRegexStrict = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
+    let addressMatch = workingText.match(addressRegexStrict);
+    
+    // If no match, try looser pattern: number + words until comma or end
+    if (!addressMatch) {
+      const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,|$)/;
+      addressMatch = workingText.match(addressRegexLoose);
+    }
+    
     if (addressMatch) {
       const streetAddress = addressMatch[0].trim();
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
@@ -142,7 +150,8 @@ export function LeadForm() {
     const remainingText = workingText
       .replace(/\s+/g, ' ') // Normalize whitespace
       .replace(/[,]/g, '') // Remove commas
-      .trim();
+      .trim()
+      .replace(/^[^\w\s]+|[^\w\s]+$/g, ''); // Remove leading/trailing punctuation and special chars
     
     if (remainingText && remainingText.length >= 5) {
       // Only fill description if there's meaningful text left (at least 5 chars)
