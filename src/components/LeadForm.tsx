@@ -66,28 +66,81 @@ export function LeadForm() {
     // v6 - Known city list for New Orleans / Jefferson Parish area
     if (!text.trim()) return;
 
-    // Known cities in New Orleans and Jefferson Parish (Louisiana)
+    // Known cities within 100 miles of Metairie, Louisiana
     const knownCities = new Set([
       // Jefferson Parish
       "kenner", "metairie", "gretna", "harvey", "marrero", "westwego", "terrytown",
       "estelle", "jefferson", "river ridge", "harahan", "elmwood", "bridge city",
       "waggaman", "avondale", "lafitte", "jean lafitte", "barataria", "crown point",
-      "grand isle", "timberlane", "woodmere", "lincoln beach",
+      "grand isle", "timberlane", "woodmere", "lincoln beach", "old metairie",
+      "fat city", "bucktown", "nine mile point",
       // Orleans Parish / New Orleans
       "new orleans", "algiers", "gentilly", "lakeview", "mid-city", "midcity",
       "uptown", "downtown", "french quarter", "marigny", "bywater", "treme",
       "central city", "garden district", "irish channel", "carrollton", "hollygrove",
       "broadmoor", "fontainebleau", "lakeshore", "lakewood", "pontchartrain park",
-      "east new orleans", "new orleans east", "chalmette", "arabi", "meraux", "violet",
-      // St. Tammany Parish (nearby)
+      "east new orleans", "new orleans east", "lower ninth ward", "upper ninth ward",
+      "holy cross", "desire", "florida", "st. claude", "st. roch", "seventh ward",
+      "milan", "audubon", "black pearl", "freret", "gert town", "leonidas",
+      "pigeon town", "dixon", "fillmore", "lake terrace", "lake oaks", "lake vista",
+      "navarre", "city park", "fairgrounds", "dillard", "little woods", "read blvd east",
+      "viavant", "venetian isles",
+      // St. Tammany Parish (North Shore / Covington / Slidell)
       "slidell", "covington", "mandeville", "madisonville", "abita springs", "lacombe",
-      "pearl river", "eden isles",
-      // St. Bernard Parish
-      "chalmette", "arabi", "meraux", "violet", "poydras", "saint bernard",
+      "pearl river", "eden isles", "folsom", "bush", "sun", "talisheek",
+      "goodbee", "hickory", "lee road", "waldheim", "northshore", "north shore",
+      "old mandeville", "fontainebleau", "chinchuba", "lakeshore estates",
+      // St. Bernard Parish (Chalmette area)
+      "chalmette", "arabi", "meraux", "violet", "poydras", "saint bernard", "st. bernard",
+      "delacroix", "yscloskey", "reggio", "alluvial city", "toca", "verret",
+      "kenilworth", "promised land",
       // St. Charles Parish
-      "luling", "boutte", "destrehan", "st. rose", "norco", "hahnville",
+      "luling", "boutte", "destrehan", "st. rose", "norco", "hahnville", "new sarpy",
+      "paradis", "ama", "killona", "montz", "taft", "st. charles",
+      // St. John the Baptist Parish
+      "laplace", "reserve", "garyville", "edgard", "wallace", "mt. airy", "mount airy",
+      "pleasure bend", "lions", "st. john",
+      // St. James Parish
+      "gramercy", "lutcher", "paulina", "convent", "vacherie", "st. james", "welcome",
+      "romeville", "uncle sam",
+      // Tangipahoa Parish
+      "hammond", "ponchatoula", "amite", "independence", "kentwood", "roseland",
+      "tickfaw", "natalbany", "robert", "loranger", "manchac", "akers", "arcola",
+      "fluker", "husser", "montpelier",
+      // Livingston Parish
+      "denham springs", "walker", "livingston", "albany", "springfield", "watson",
+      "holden", "killian", "maurepas", "port vincent", "french settlement",
+      "head of island", "colyell", "frost",
+      // Ascension Parish
+      "gonzales", "prairieville", "donaldsonville", "sorrento", "darrow", "burnside",
+      "geismar", "st. amant", "galvez", "dutch town", "dutchtown", "pierre part",
+      // East Baton Rouge Parish
+      "baton rouge", "baker", "zachary", "central", "greenwell springs", "pride",
+      "port allen", "scotlandville", "broadmoor", "mid city", "garden district",
+      "shenandoah", "jefferson terrace", "southdowns", "bocage", "tara", "inniswold",
+      // West Baton Rouge Parish
+      "port allen", "addis", "brusly", "erwinville",
+      // Iberville Parish
+      "plaquemine", "white castle", "maringouin", "grosse tete", "rosedale", "st. gabriel",
+      // Assumption Parish  
+      "napoleonville", "labadieville", "paincourtville", "plattenville", "pierre part",
+      // Lafourche Parish
+      "thibodaux", "raceland", "lockport", "cut off", "galliano", "golden meadow",
+      "larose", "mathews", "des allemands", "kraemer", "lafourche", "chackbay",
+      // Terrebonne Parish
+      "houma", "gray", "schriever", "bayou cane", "dulac", "cocodrie", "chauvin",
+      "montegut", "bourg", "theriot", "dularge", "gibson",
       // Plaquemines Parish
-      "belle chasse", "port sulphur", "buras", "venice",
+      "belle chasse", "port sulphur", "buras", "venice", "boothville", "empire",
+      "pointe a la hache", "braithwaite", "phoenix", "davant", "wood park",
+      // Washington Parish
+      "bogalusa", "franklinton", "angie", "varnado", "enon", "pine",
+      // West Feliciana Parish
+      "st. francisville", "bains",
+      // East Feliciana Parish
+      "clinton", "jackson", "norwood", "slaughter", "ethel", "wilson",
+      // Pointe Coupee Parish
+      "new roads", "morganza", "livonia", "fordoche", "innis", "lakeland", "ventress",
     ]);
 
     // Helper to check if a word sequence is a known city
