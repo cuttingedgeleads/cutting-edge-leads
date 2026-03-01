@@ -12,16 +12,16 @@ export function NavBar({
   role?: string;
   businessName?: string | null;
 }) {
-  const initial = name?.trim()?.[0]?.toUpperCase() || "P";
-  const displayName = name || "Profile";
-  const displayBusiness = businessName || "Business name pending";
+  const normalizedName = name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  const initial = normalizedName?.[0]?.toUpperCase() || "P";
+  const displayName = normalizedName || "Profile";
 
   return (
     <header className="sticky top-0 z-10 bg-white border-b">
       <div className="mx-auto max-w-5xl px-4 py-4 flex flex-wrap items-center gap-3 justify-between">
         <div>
           <p className="text-sm text-slate-500">Cutting Edge Leads</p>
-          <p className="font-semibold">Welcome, {name || "User"}</p>
+          <p className="font-semibold">Welcome, {displayName || "User"}</p>
           {role && role !== "CONTRACTOR" ? (
             <span className="text-xs text-slate-500">{role}</span>
           ) : null}
@@ -35,7 +35,6 @@ export function NavBar({
               </span>
               <span className="flex flex-col leading-tight">
                 <span className="text-sm font-semibold text-slate-900">{displayName}</span>
-                <span className="text-xs text-slate-500">{displayBusiness}</span>
               </span>
             </Link>
           ) : null}
