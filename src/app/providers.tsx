@@ -12,19 +12,25 @@ type BeforeInstallPromptEvent = Event & {
 declare global {
   interface Window {
     __pwaInstallPrompt?: BeforeInstallPromptEvent | null;
+    deferredPrompt?: BeforeInstallPromptEvent | null;
   }
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     function handleBeforeInstallPrompt(event: Event) {
+      console.log("[PWA] beforeinstallprompt fired", event);
       event.preventDefault();
-      window.__pwaInstallPrompt = event as BeforeInstallPromptEvent;
+      const promptEvent = event as BeforeInstallPromptEvent;
+      window.__pwaInstallPrompt = promptEvent;
+      window.deferredPrompt = promptEvent;
       window.dispatchEvent(new Event("pwa-install-available"));
     }
 
     function handleAppInstalled() {
+      console.log("[PWA] appinstalled fired");
       window.__pwaInstallPrompt = null;
+      window.deferredPrompt = null;
       window.dispatchEvent(new Event("pwa-install-installed"));
     }
 

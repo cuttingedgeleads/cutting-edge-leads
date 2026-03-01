@@ -28,45 +28,79 @@ export function InstallAppButton({ label = "Install App", className = "" }: Inst
     setIsInstalled(isStandaloneDisplay());
 
     function handleInstallAvailable() {
-      const promptEvent = (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent })
-        .__pwaInstallPrompt;
+      const promptEvent =
+        (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent })
+          .__pwaInstallPrompt ||
+        (window as Window & { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
       if (promptEvent) {
+        console.log("[PWA] install prompt available", promptEvent);
         setDeferredPrompt(promptEvent);
         setCanInstall(true);
       }
     }
 
     function handleAppInstalled() {
+      console.log("[PWA] app installed");
       setIsInstalled(true);
       setCanInstall(false);
       setDeferredPrompt(null);
+    }
+
+    function handleBeforeInstallPrompt(event: Event) {
+      console.log("[PWA] beforeinstallprompt captured in button", event);
+      event.preventDefault();
+      const promptEvent = event as BeforeInstallPromptEvent;
+      (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt =
+        promptEvent;
+      (window as Window & { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt =
+        promptEvent;
+      setDeferredPrompt(promptEvent);
+      setCanInstall(true);
     }
 
     handleInstallAvailable();
 
     window.addEventListener("pwa-install-available", handleInstallAvailable);
     window.addEventListener("pwa-install-installed", handleAppInstalled);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
 
     return () => {
       window.removeEventListener("pwa-install-available", handleInstallAvailable);
       window.removeEventListener("pwa-install-installed", handleAppInstalled);
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
   async function handleInstallClick() {
     const promptEvent =
       deferredPrompt ||
-      (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt;
-    if (!promptEvent) return;
-    await promptEvent.prompt();
-    const choice = await promptEvent.userChoice;
-    if (choice.outcome === "accepted") {
-      setIsInstalled(true);
+      (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent }).__pwaInstallPrompt ||
+      (window as Window & { deferredPrompt?: BeforeInstallPromptEvent }).deferredPrompt;
+
+    if (!promptEvent) {
+      console.log("[PWA] install click ignored - no deferred prompt");
+      return;
     }
+
+    console.log("[PWA] prompting install");
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      console.log("[PWA] user choice", choice);
+      if (choice.outcome === "accepted") {
+        setIsInstalled(true);
+      }
+    } catch (error) {
+      console.error("[PWA] prompt failed", error);
+    }
+
     setCanInstall(false);
     setDeferredPrompt(null);
     (window as Window & { __pwaInstallPrompt?: BeforeInstallPromptEvent | null }).__pwaInstallPrompt =
       null;
+    (window as Window & { deferredPrompt?: BeforeInstallPromptEvent | null }).deferredPrompt = null;
   }
 
   if (isInstalled || !canInstall) return null;
