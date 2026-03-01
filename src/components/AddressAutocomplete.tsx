@@ -6,6 +6,7 @@ type GoogleMaps = typeof google;
 
 export function AddressAutocomplete() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [enabled] = useState(Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY));
 
   useEffect(() => {
@@ -13,10 +14,17 @@ export function AddressAutocomplete() {
 
     const initAutocomplete = () => {
       if (!inputRef.current || !(window as { google?: GoogleMaps }).google) return;
+      
+      // Prevent duplicate initialization
+      if (autocompleteRef.current) return;
+      
       const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
         fields: ["address_components", "formatted_address"],
         types: ["address"],
+        componentRestrictions: { country: "us" },
       });
+      
+      autocompleteRef.current = autocomplete;
 
       autocomplete.addListener("place_changed", () => {
         const place = autocomplete.getPlace();
@@ -86,8 +94,10 @@ export function AddressAutocomplete() {
       ref={inputRef}
       name="address"
       id="address"
+      type="text"
       className="mt-1 w-full rounded-lg border px-3 py-2"
       placeholder="Start typing an address"
+      autoComplete="off"
       required
     />
   );

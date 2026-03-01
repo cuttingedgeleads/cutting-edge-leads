@@ -63,12 +63,81 @@ export function LeadForm() {
   const [quickPasteText, setQuickPasteText] = useState("");
 
   function parseQuickPaste(text: string) {
-    // v3 - Added description auto-fill 2026-02-28 18:43
+    // v4 - Improved phone/state/city parsing 2026-02-28 19:52
     if (!text.trim()) return;
+
+    const stateNameToAbbr: Record<string, string> = {
+      alabama: "AL",
+      alaska: "AK",
+      arizona: "AZ",
+      arkansas: "AR",
+      california: "CA",
+      colorado: "CO",
+      connecticut: "CT",
+      delaware: "DE",
+      florida: "FL",
+      georgia: "GA",
+      hawaii: "HI",
+      idaho: "ID",
+      illinois: "IL",
+      indiana: "IN",
+      iowa: "IA",
+      kansas: "KS",
+      kentucky: "KY",
+      louisiana: "LA",
+      maine: "ME",
+      maryland: "MD",
+      massachusetts: "MA",
+      michigan: "MI",
+      minnesota: "MN",
+      mississippi: "MS",
+      missouri: "MO",
+      montana: "MT",
+      nebraska: "NE",
+      nevada: "NV",
+      "new hampshire": "NH",
+      "new jersey": "NJ",
+      "new mexico": "NM",
+      "new york": "NY",
+      "north carolina": "NC",
+      "north dakota": "ND",
+      ohio: "OH",
+      oklahoma: "OK",
+      oregon: "OR",
+      pennsylvania: "PA",
+      "rhode island": "RI",
+      "south carolina": "SC",
+      "south dakota": "SD",
+      tennessee: "TN",
+      texas: "TX",
+      utah: "UT",
+      vermont: "VT",
+      virginia: "VA",
+      washington: "WA",
+      "west virginia": "WV",
+      wisconsin: "WI",
+      wyoming: "WY",
+      "district of columbia": "DC",
+    };
+
+    const stateAbbreviations = Object.values(stateNameToAbbr);
+    const stateNamePattern = Object.keys(stateNameToAbbr)
+      .sort((a, b) => b.length - a.length)
+      .map((name) => name.replace(/\s+/g, "\\s+"))
+      .join("|");
+    const stateAbbrPattern = stateAbbreviations.join("|");
+    const stateFullPattern = `(?:${stateAbbrPattern}|${stateNamePattern})`;
+
+    const normalizeState = (value: string) => {
+      const trimmed = value.trim();
+      if (trimmed.length === 2) return trimmed.toUpperCase();
+      const key = trimmed.toLowerCase().replace(/\s+/g, " ");
+      return stateNameToAbbr[key] || "";
+    };
 
     // Working copy that we'll progressively clean as we extract data
     let workingText = text;
-    
+
     // 1. Extract EMAIL first (most reliable, has @)
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/i;
     const emailMatch = workingText.match(emailRegex);
@@ -76,23 +145,28 @@ export function LeadForm() {
       const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
       if (emailInput) emailInput.value = emailMatch[1];
       // Remove email from working text
-      workingText = workingText.replace(emailMatch[0], ' ');
+      workingText = workingText.replace(emailMatch[0], " ");
     }
 
     // 2. Extract PHONE next (before address to prevent digit bleeding)
-    const phoneRegex = /\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+    const phoneRegex = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
     const phoneMatch = workingText.match(phoneRegex);
-    let phoneFormatted = '';
+    let phoneFormatted = "";
     if (phoneMatch) {
       const phoneInput = document.querySelector('input[name="phone"]') as HTMLInputElement;
       if (phoneInput) {
         // Format phone number
-        const digits = phoneMatch[0].replace(/\D/g, '');
-        phoneFormatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-        phoneInput.value = phoneFormatted;
+        let digits = phoneMatch[0].replace(/\D/g, "");
+        if (digits.length === 11 && digits.startsWith("1")) {
+          digits = digits.slice(1);
+        }
+        if (digits.length === 10) {
+          phoneFormatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+          phoneInput.value = phoneFormatted;
+        }
       }
       // Remove phone from working text (critical to prevent address contamination)
-      workingText = workingText.replace(phoneMatch[0], ' ');
+      workingText = workingText.replace(phoneMatch[0], " ");
     }
 
     // 3. Extract ADDRESS from cleaned text (with word boundary before house number)
@@ -100,37 +174,76 @@ export function LeadForm() {
     // Try strict regex WITH suffix first
     const addressRegexStrict = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
     let addressMatch = workingText.match(addressRegexStrict);
-    
+
     // If no match, try looser pattern: number + words until comma or end
     if (!addressMatch) {
       const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,|$)/;
       addressMatch = workingText.match(addressRegexLoose);
     }
-    
+
     if (addressMatch) {
       const streetAddress = addressMatch[0].trim();
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
       if (addressInput) addressInput.value = streetAddress;
       // Remove address from working text
-      workingText = workingText.replace(addressMatch[0], ' ');
+      workingText = workingText.replace(addressMatch[0], " ");
     }
 
-    // 4. Extract CITY (look for word after comma, or remaining capitalized words)
-    const cityMatch = workingText.match(/,\s*([A-Za-z\s]+)/);
-    if (cityMatch) {
+    // 4. Extract CITY + STATE + ZIP together when possible (avoids note bleed)
+    const cityStateZipRegex = new RegExp(
+      String.raw`,\s*([A-Za-z\s]+?)\s*,?\s*(${stateFullPattern})\b(?:\s+(\d{5}))?`,
+      "i"
+    );
+    const cityStateZipMatch = workingText.match(cityStateZipRegex);
+    if (cityStateZipMatch) {
       const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
-      if (cityInput) cityInput.value = cityMatch[1].trim();
-      // Remove city from working text
-      workingText = workingText.replace(cityMatch[0], ' ');
+      if (cityInput) cityInput.value = cityStateZipMatch[1].trim();
+
+      const normalizedState = normalizeState(cityStateZipMatch[2]);
+      const stateInput = document.querySelector('input[name="state"]') as HTMLInputElement;
+      if (stateInput && normalizedState) stateInput.value = normalizedState;
+
+      if (cityStateZipMatch[3]) {
+        const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
+        if (zipInput) zipInput.value = cityStateZipMatch[3];
+      }
+
+      workingText = workingText.replace(cityStateZipMatch[0], " ");
+    } else {
+      // 4a. Extract STATE alone (abbr or full name)
+      const stateRegex = new RegExp(`\b(${stateFullPattern})\b`, "i");
+      const stateMatch = workingText.match(stateRegex);
+      if (stateMatch) {
+        const normalizedState = normalizeState(stateMatch[1]);
+        const stateInput = document.querySelector('input[name="state"]') as HTMLInputElement;
+        if (stateInput && normalizedState) stateInput.value = normalizedState;
+        workingText = workingText.replace(stateMatch[0], " ");
+      }
+
+      // 4b. Extract ZIP alone
+      const zipMatch = workingText.match(/\b(\d{5})(?:-\d{4})?\b/);
+      if (zipMatch) {
+        const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
+        if (zipInput) zipInput.value = zipMatch[1];
+        workingText = workingText.replace(zipMatch[0], " ");
+      }
+
+      // 4c. Extract CITY (use comma and stop at dash/notes or digits)
+      const cityMatch = workingText.match(/,\s*([A-Za-z\s]+?)(?=\s*[-–—]|\s+\d{5}|$)/);
+      if (cityMatch) {
+        const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+        if (cityInput) cityInput.value = cityMatch[1].trim();
+        workingText = workingText.replace(cityMatch[0], " ");
+      }
     }
 
     // 5. Extract NAME from remaining text (whatever alphabetic text is left)
     const cleanedText = workingText
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .replace(/[,]/g, '') // Remove commas
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .replace(/[,]/g, "") // Remove commas
       .trim();
-    
-    let extractedName = '';
+
+    let extractedName = "";
     if (cleanedText) {
       // Look for name-like patterns (letters, spaces, hyphens, apostrophes)
       const nameMatch = cleanedText.match(/^([A-Za-z\s'-]+)/);
@@ -141,18 +254,18 @@ export function LeadForm() {
           if (nameInput) nameInput.value = name;
           extractedName = name;
           // Remove extracted name from working text
-          workingText = workingText.replace(name, ' ');
+          workingText = workingText.replace(name, " ");
         }
       }
     }
 
     // 6. Auto-fill DESCRIPTION with remaining meaningful text
     const remainingText = workingText
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .replace(/[,]/g, '') // Remove commas
+      .replace(/\s+/g, " ") // Normalize whitespace
+      .replace(/[,]/g, "") // Remove commas
       .trim()
-      .replace(/^[^\w\s]+|[^\w\s]+$/g, ''); // Remove leading/trailing punctuation and special chars
-    
+      .replace(/^[^\w\s]+|[^\w\s]+$/g, ""); // Remove leading/trailing punctuation and special chars
+
     if (remainingText && remainingText.length >= 5) {
       // Only fill description if there's meaningful text left (at least 5 chars)
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
