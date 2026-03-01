@@ -149,6 +149,11 @@ export function LeadForm() {
       const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
 
+      const commentsMatch = text.match(/comments\s*:?/i);
+      const commentsOnly = commentsMatch
+        ? text.slice((commentsMatch.index ?? 0) + commentsMatch[0].length).trim()
+        : "";
+
       const fullName = [labeledData.firstName, labeledData.lastName]
         .filter(Boolean)
         .join(" ")
@@ -183,8 +188,8 @@ export function LeadForm() {
 
       if (zipInput && labeledData.zip) zipInput.value = labeledData.zip;
 
-      if (descriptionInput && labeledData.comments) {
-        descriptionInput.value = labeledData.comments.trim();
+      if (descriptionInput) {
+        descriptionInput.value = commentsOnly;
       }
 
       setQuickPasteText("");
