@@ -12,6 +12,20 @@ function isExpired(date: Date) {
   return new Date() > expiresAt;
 }
 
+function formatPostedAt(date: Date) {
+  const postedAt = new Date(date);
+  const datePart = postedAt.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timePart = postedAt.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `Posted: ${datePart} at ${timePart}`;
+}
+
 async function requestUnlock(formData: FormData) {
   "use server";
   const leadId = String(formData.get("leadId") || "");
@@ -104,6 +118,7 @@ export default async function LeadsPage() {
                     <p className="text-sm text-slate-600">
                       {isApproved ? `${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}` : lead.city}
                     </p>
+                    <p className="text-sm text-slate-500">{formatPostedAt(lead.createdAt)}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-semibold">${lead.price}</p>
