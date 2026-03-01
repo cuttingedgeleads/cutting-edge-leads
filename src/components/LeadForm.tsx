@@ -103,6 +103,94 @@ export function LeadForm() {
       .map((line) => line.trim())
       .filter(Boolean);
 
+    // 0. Website contact form labeled format (First Name, Last Name, Address, etc.)
+    const labeledFieldMap: Record<string, string> = {
+      "first name": "firstName",
+      "last name": "lastName",
+      "address": "address",
+      "address line 2": "addressLine2",
+      "city": "city",
+      "state": "state",
+      "zip": "zip",
+      "email": "email",
+      "phone": "phone",
+      "comments": "comments",
+    };
+
+    const labeledFieldPattern = new RegExp(
+      `^(${Object.keys(labeledFieldMap)
+        .map((label) => label.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
+        .join("|")})\\s*:?\\s*(.*)$`,
+      "i"
+    );
+
+    const labeledData: Record<string, string> = {};
+    let labeledMatches = 0;
+    lines.forEach((line) => {
+      const match = line.match(labeledFieldPattern);
+      if (match) {
+        const key = labeledFieldMap[match[1].toLowerCase()];
+        labeledData[key] = (match[2] || "").trim();
+        labeledMatches += 1;
+      }
+    });
+
+    const looksLikeLabeledForm =
+      labeledMatches >= 5 &&
+      (Boolean(labeledData.firstName) || Boolean(labeledData.lastName) || Boolean(labeledData.email));
+
+    if (looksLikeLabeledForm) {
+      const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
+      const emailInput = document.querySelector('input[name="email"]') as HTMLInputElement;
+      const phoneInput = document.querySelector('input[name="phone"]') as HTMLInputElement;
+      const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
+      const cityInput = document.querySelector('input[name="city"]') as HTMLInputElement;
+      const stateInput = document.querySelector('input[name="state"]') as HTMLInputElement;
+      const zipInput = document.querySelector('input[name="zip"]') as HTMLInputElement;
+      const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
+
+      const fullName = [labeledData.firstName, labeledData.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      if (nameInput && fullName) nameInput.value = toTitleCase(fullName);
+
+      if (emailInput && labeledData.email) emailInput.value = labeledData.email;
+
+      if (phoneInput && labeledData.phone) {
+        let digits = labeledData.phone.replace(/\D/g, "");
+        if (digits.length === 11 && digits.startsWith("1")) {
+          digits = digits.slice(1);
+        }
+        if (digits.length === 10) {
+          phoneInput.value = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+        } else {
+          phoneInput.value = labeledData.phone;
+        }
+      }
+
+      if (addressInput && labeledData.address) {
+        const addressLine2 = labeledData.addressLine2 ? ` ${labeledData.addressLine2}` : "";
+        addressInput.value = toTitleCase(`${labeledData.address}${addressLine2}`.trim());
+      }
+
+      if (cityInput && labeledData.city) cityInput.value = toTitleCase(labeledData.city);
+
+      if (stateInput && labeledData.state) {
+        const normalizedState = normalizeState(labeledData.state);
+        stateInput.value = normalizedState ?? labeledData.state.toUpperCase();
+      }
+
+      if (zipInput && labeledData.zip) zipInput.value = labeledData.zip;
+
+      if (descriptionInput && labeledData.comments) {
+        descriptionInput.value = labeledData.comments.trim();
+      }
+
+      setQuickPasteText("");
+      return;
+    }
+
     const fullText = lines.join(" ").trim();
 
     // Known cities within 100 miles of Metairie, Louisiana
