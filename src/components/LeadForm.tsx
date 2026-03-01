@@ -80,7 +80,7 @@ export function LeadForm() {
       "central city", "garden district", "irish channel", "carrollton", "hollygrove",
       "broadmoor", "fontainebleau", "lakeshore", "lakewood", "pontchartrain park",
       "east new orleans", "new orleans east", "lower ninth ward", "upper ninth ward",
-      "holy cross", "desire", "florida", "st. claude", "st. roch", "seventh ward",
+      "holy cross", "desire", "florida", "st. claude", "saint claude", "st. roch", "saint roch", "seventh ward",
       "milan", "audubon", "black pearl", "freret", "gert town", "leonidas",
       "pigeon town", "dixon", "fillmore", "lake terrace", "lake oaks", "lake vista",
       "navarre", "city park", "fairgrounds", "dillard", "little woods", "read blvd east",
@@ -95,13 +95,13 @@ export function LeadForm() {
       "delacroix", "yscloskey", "reggio", "alluvial city", "toca", "verret",
       "kenilworth", "promised land",
       // St. Charles Parish
-      "luling", "boutte", "destrehan", "st. rose", "norco", "hahnville", "new sarpy",
-      "paradis", "ama", "killona", "montz", "taft", "st. charles",
+      "luling", "boutte", "destrehan", "st. rose", "saint rose", "norco", "hahnville", "new sarpy",
+      "paradis", "ama", "killona", "montz", "taft", "st. charles", "saint charles",
       // St. John the Baptist Parish
       "laplace", "reserve", "garyville", "edgard", "wallace", "mt. airy", "mount airy",
-      "pleasure bend", "lions", "st. john",
+      "pleasure bend", "lions", "st. john", "saint john",
       // St. James Parish
-      "gramercy", "lutcher", "paulina", "convent", "vacherie", "st. james", "welcome",
+      "gramercy", "lutcher", "paulina", "convent", "vacherie", "st. james", "saint james", "welcome",
       "romeville", "uncle sam",
       // Tangipahoa Parish
       "hammond", "ponchatoula", "amite", "independence", "kentwood", "roseland",
@@ -113,7 +113,7 @@ export function LeadForm() {
       "head of island", "colyell", "frost",
       // Ascension Parish
       "gonzales", "prairieville", "donaldsonville", "sorrento", "darrow", "burnside",
-      "geismar", "st. amant", "galvez", "dutch town", "dutchtown", "pierre part",
+      "geismar", "st. amant", "saint amant", "galvez", "dutch town", "dutchtown", "pierre part",
       // East Baton Rouge Parish
       "baton rouge", "baker", "zachary", "central", "greenwell springs", "pride",
       "port allen", "scotlandville", "broadmoor", "mid city", "garden district",
@@ -121,7 +121,7 @@ export function LeadForm() {
       // West Baton Rouge Parish
       "port allen", "addis", "brusly", "erwinville",
       // Iberville Parish
-      "plaquemine", "white castle", "maringouin", "grosse tete", "rosedale", "st. gabriel",
+      "plaquemine", "white castle", "maringouin", "grosse tete", "rosedale", "st. gabriel", "saint gabriel",
       // Assumption Parish  
       "napoleonville", "labadieville", "paincourtville", "plattenville", "pierre part",
       // Lafourche Parish
@@ -136,7 +136,7 @@ export function LeadForm() {
       // Washington Parish
       "bogalusa", "franklinton", "angie", "varnado", "enon", "pine",
       // West Feliciana Parish
-      "st. francisville", "bains",
+      "st. francisville", "saint francisville", "bains",
       // East Feliciana Parish
       "clinton", "jackson", "norwood", "slaughter", "ethel", "wilson",
       // Pointe Coupee Parish
