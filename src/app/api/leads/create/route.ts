@@ -165,10 +165,20 @@ export async function POST(request: NextRequest) {
       where: {
         role: "CONTRACTOR",
         notifyNewLeads: true,
+        serviceCities: {
+          contains: normalizedCity,
+        },
       },
     });
 
-    const pushRecipients = pushContractors.map((contractor) => contractor.id);
+    const pushRecipients = pushContractors
+      .filter((contractor) =>
+        contractor.serviceCities
+          .split(",")
+          .map((entry) => entry.trim().toLowerCase())
+          .includes(normalizedCity)
+      )
+      .map((contractor) => contractor.id);
 
     await sendPushToUserIds(pushRecipients, {
       title: "New lead available",
