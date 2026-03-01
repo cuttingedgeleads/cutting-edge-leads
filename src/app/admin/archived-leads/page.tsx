@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { formatCentralDateTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -66,7 +67,7 @@ export default async function ArchivedLeadsPage() {
                 <div className="text-right">
                   <p className="font-semibold">${lead.price}</p>
                   <p className="text-xs text-slate-500">
-                    Posted {lead.createdAt.toLocaleString()}
+                    Posted {formatCentralDateTime(lead.createdAt)}
                   </p>
                 </div>
               </div>
@@ -83,7 +84,7 @@ export default async function ArchivedLeadsPage() {
                           {unlock.contractor.name} ({unlock.contractor.email})
                         </span>
                         <span className="text-slate-500">
-                          {unlock.approvedAt?.toLocaleString() || "Approved"} • ${lead.price}
+                          {unlock.approvedAt ? formatCentralDateTime(unlock.approvedAt) : "Approved"} • ${lead.price}
                         </span>
                       </li>
                     ))}

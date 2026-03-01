@@ -70,7 +70,18 @@ export default async function PurchaseHistoryPage() {
               <div className="rounded-lg bg-slate-50 border px-3 py-2 text-sm text-slate-600">
                 <p className="text-xs uppercase tracking-wide text-slate-500">Date and Time Purchased</p>
                 <p className="font-medium text-slate-800">
-                  {purchase.approvedAt?.toLocaleString() || "Approved"}
+                  {purchase.approvedAt
+                    ? `${purchase.approvedAt.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        timeZone: "America/Chicago",
+                      })} at ${purchase.approvedAt.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        timeZone: "America/Chicago",
+                      })}`
+                    : "Approved"}
                 </p>
               </div>
             </div>

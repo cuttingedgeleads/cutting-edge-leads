@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { hash } from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { formatCentralDate } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 
@@ -127,7 +128,11 @@ export default async function ContractorsPage() {
                   Cities: {contractor.serviceCities || "None"}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Created {contractor.createdAt.toLocaleDateString()}
+                  Created {formatCentralDate(contractor.createdAt, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </p>
               </div>
             ))}

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { formatCentralDate, formatCentralTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { ContractorTabs } from "@/components/ContractorTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -13,17 +14,14 @@ function isExpired(date: Date) {
 }
 
 function formatPostedAt(date: Date) {
-  const postedAt = new Date(date);
-  const datePart = postedAt.toLocaleDateString("en-US", {
+  const datePart = formatCentralDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",
-    timeZone: "America/Chicago",
   });
-  const timePart = postedAt.toLocaleTimeString("en-US", {
+  const timePart = formatCentralTime(date, {
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/Chicago",
   });
   return `Posted: ${datePart} at ${timePart}`;
 }

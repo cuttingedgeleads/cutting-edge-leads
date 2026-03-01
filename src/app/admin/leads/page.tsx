@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { formatCentralDateTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { AdminTabs } from "@/components/AdminTabs";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -64,14 +65,14 @@ export default async function AdminLeadsPage() {
                       </div>
                       <p className="text-xs text-slate-500">{approvedCount}/2 unlocks</p>
                       <p className="text-xs text-slate-500">
-                        Posted {lead.createdAt.toLocaleString()}
+                        Posted {formatCentralDateTime(lead.createdAt)}
                       </p>
                       {lead.unlocks.length > 0 ? (
                         <ul className="mt-1 space-y-1 text-xs text-slate-500">
                           {lead.unlocks.map((unlock) => (
                             <li key={unlock.id}>
                               {unlock.contractor.name}{" • "}
-                              {unlock.approvedAt?.toLocaleString() || "Approved"}
+                              {unlock.approvedAt ? formatCentralDateTime(unlock.approvedAt) : "Approved"}
                             </li>
                           ))}
                         </ul>
