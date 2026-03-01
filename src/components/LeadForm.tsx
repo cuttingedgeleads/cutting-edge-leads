@@ -98,6 +98,13 @@ export function LeadForm() {
     // v6 - Known city list for New Orleans / Jefferson Parish area
     if (!text.trim()) return;
 
+    const [firstLine, ...noteLines] = text
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    const noteText = noteLines.join(" ").trim();
+
     // Known cities within 100 miles of Metairie, Louisiana
     const knownCities = new Set([
       // Jefferson Parish
@@ -192,7 +199,7 @@ export function LeadForm() {
     };
 
     // Working copy that we'll progressively clean as we extract data
-    let workingText = text.trim();
+    let workingText = (firstLine || "").trim();
 
     // 1. FIRST: Extract NAME (first 2 words at the start)
     // Names can be "John Smith", "Mary J", "Jean-Pierre O'Connor"
@@ -298,11 +305,13 @@ export function LeadForm() {
       .trim()
       .replace(/^[^\w\s]+|[^\w\s]+$/g, ""); // Remove leading/trailing punctuation and special chars
 
-    if (remainingText && remainingText.length >= 5) {
+    const descriptionText = [noteText, remainingText].filter(Boolean).join(" ").trim();
+
+    if (descriptionText && descriptionText.length >= 5) {
       // Only fill description if there's meaningful text left (at least 5 chars)
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
       if (descriptionInput) {
-        descriptionInput.value = toTitleCase(remainingText);
+        descriptionInput.value = toTitleCase(descriptionText);
       }
     }
 
