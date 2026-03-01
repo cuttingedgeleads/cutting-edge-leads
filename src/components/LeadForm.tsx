@@ -257,7 +257,8 @@ export function LeadForm() {
       }
     }
 
-    // 5. Extract NAME from remaining text (whatever alphabetic text is left)
+    // 5. Extract NAME from the START of text (first 2-4 words, before any numbers/special content)
+    // Names are typically at the beginning: "John Smith", "Mary Jane Watson", etc.
     const cleanedText = workingText
       .replace(/\s+/g, " ") // Normalize whitespace
       .replace(/[,]/g, "") // Remove commas
@@ -265,11 +266,21 @@ export function LeadForm() {
 
     let extractedName = "";
     if (cleanedText) {
-      // Look for name-like patterns (letters, spaces, hyphens, apostrophes)
-      const nameMatch = cleanedText.match(/^([A-Za-z\s'-]+)/);
+      // Match first 2-4 capitalized/lowercase name words (stop at numbers, common non-name words)
+      // This regex captures names like "Andrea vidosh", "Mary Jane O'Connor", "Jean-Pierre Smith"
+      const nameMatch = cleanedText.match(/^([A-Za-z][A-Za-z'-]*(?:\s+[A-Za-z][A-Za-z'-]*){0,3})/);
       if (nameMatch) {
-        const name = nameMatch[1].trim();
-        if (name.length >= 2 && name.length < 50) {
+        let name = nameMatch[1].trim();
+        // Limit to first 2-3 words (most names are 2-3 words)
+        const words = name.split(/\s+/);
+        if (words.length > 3) {
+          name = words.slice(0, 3).join(" ");
+        }
+        // Make sure it's not a city name or note keyword by checking against common patterns
+        const lowerName = name.toLowerCase();
+        const isLikelyNotName = /\b(needs?|wants?|looking|request|estimate|quote|service|weekly|monthly)\b/i.test(name);
+        
+        if (name.length >= 2 && name.length < 40 && !isLikelyNotName) {
           const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
           if (nameInput) nameInput.value = name;
           extractedName = name;
