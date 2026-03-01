@@ -51,7 +51,7 @@ export default async function PurchaseHistoryPage() {
           {purchases.map((purchase) => (
             <div key={purchase.id} className="relative bg-white rounded-xl border p-4 space-y-3">
               <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                {`Purchased for $${purchase.lead.price}`}
+                {`Purchased $${purchase.lead.price}`}
               </div>
               <div className="space-y-1 pr-32">
                 <p className="font-semibold">{purchase.lead.jobType}</p>
