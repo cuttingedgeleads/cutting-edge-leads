@@ -112,7 +112,7 @@ export default async function LeadsPage() {
             return (
               <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
                 <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                  {isApproved ? `Purchased for $${lead.price}` : `$${lead.price}`}
+                  {isApproved ? `Purchased for $${lead.price}` : `Price $${lead.price}`}
                 </div>
                 <div className="space-y-1 pr-32">
                   <p className="font-semibold">{lead.jobType}</p>
