@@ -83,11 +83,25 @@ export default async function LeadsPage() {
     .map((city) => city.trim().toLowerCase())
     .filter(Boolean);
 
-  const visibleLeads = leads.filter((lead) => {
-    // If no service cities configured, show all leads
-    const cityMatch = allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
-    return !isExpired(lead.createdAt) && cityMatch;
-  });
+  const visibleLeads = leads
+    .filter((lead) => {
+      // If no service cities configured, show all leads
+      const cityMatch =
+        allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
+      return !isExpired(lead.createdAt) && cityMatch;
+    })
+    .sort((a, b) => {
+      const aPurchased = a.unlocks.some(
+        (unlock) => unlock.contractorId === session.user.id && unlock.status === "APPROVED"
+      );
+      const bPurchased = b.unlocks.some(
+        (unlock) => unlock.contractorId === session.user.id && unlock.status === "APPROVED"
+      );
+      if (aPurchased !== bPurchased) {
+        return aPurchased ? 1 : -1;
+      }
+      return b.createdAt.getTime() - a.createdAt.getTime();
+    });
 
   return (
     <div className="min-h-screen">
