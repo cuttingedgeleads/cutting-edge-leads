@@ -117,8 +117,10 @@ export function LeadForm() {
       "comments": "comments",
     };
 
+    // Sort labels by length (longest first) so "address line 2" matches before "address"
+    const sortedLabels = Object.keys(labeledFieldMap).sort((a, b) => b.length - a.length);
     const labeledFieldPattern = new RegExp(
-      `^(${Object.keys(labeledFieldMap)
+      `^(${sortedLabels
         .map((label) => label.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
         .join("|")})\\s*:?\\s*(.*)$`,
       "i"
