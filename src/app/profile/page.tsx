@@ -3,7 +3,7 @@ import { compare, hash } from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
-import { InstallAppButton } from "@/components/InstallAppButton";
+import { InstallAppSection } from "@/components/InstallAppSection";
 
 async function updateName(formData: FormData) {
   "use server";
@@ -174,15 +174,7 @@ export default async function ProfilePage() {
         businessName={user?.businessName}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
-        <section className="bg-white rounded-2xl shadow p-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Install Cutting Edge Leads</h2>
-            <p className="text-sm text-slate-600">
-              Add the app to your home screen for faster access to new leads.
-            </p>
-          </div>
-          <InstallAppButton label="Install App" className="w-full sm:w-auto" />
-        </section>
+        <InstallAppSection />
 
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div>
