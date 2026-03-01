@@ -63,7 +63,7 @@ export default async function LeadsPage() {
 
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { serviceCities: true },
+    select: { serviceCities: true, businessName: true },
   });
 
   const allowedCities = (contractor?.serviceCities || "")
@@ -79,7 +79,11 @@ export default async function LeadsPage() {
 
   return (
     <div className="min-h-screen">
-      <NavBar name={session.user.name} role={session.user.role} />
+      <NavBar
+        name={session.user.name}
+        role={session.user.role}
+        businessName={contractor?.businessName}
+      />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header className="space-y-2">
           <h2 className="text-xl font-semibold">Available leads</h2>
