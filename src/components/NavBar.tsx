@@ -18,12 +18,30 @@ export function NavBar({
 
   return (
     <header className="sticky top-0 z-10 bg-white border-b">
-      <div className="mx-auto max-w-5xl px-4 py-4 flex flex-wrap items-center gap-3 justify-between">
-        <div>
-          <p className="text-sm text-slate-500">Cutting Edge Leads</p>
-          <p className="font-semibold">Welcome, {displayName || "User"}</p>
-          {role && role !== "CONTRACTOR" ? (
-            <span className="text-xs text-slate-500">{role}</span>
+      <div className="mx-auto max-w-5xl px-4 py-4 flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-slate-500">Cutting Edge Leads</p>
+            <p className="font-semibold">Welcome, {displayName || "User"}</p>
+            {role && role !== "CONTRACTOR" ? (
+              <span className="text-xs text-slate-500">{role}</span>
+            ) : null}
+          </div>
+          {role === "CONTRACTOR" ? (
+            <Link
+              href="/profile"
+              className="inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white text-[10px] font-semibold">
+                {initial}
+              </span>
+              <span className="flex flex-col leading-tight">
+                <span className="text-xs font-semibold text-slate-900">{displayName}</span>
+                {businessName ? (
+                  <span className="text-[10px] text-slate-500">{businessName}</span>
+                ) : null}
+              </span>
+            </Link>
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -49,22 +67,6 @@ export function NavBar({
           >
             Sign out
           </button>
-          {role === "CONTRACTOR" ? (
-            <Link
-              href="/profile"
-              className="ml-auto inline-flex items-center gap-2 rounded-lg border px-2 py-1 text-xs font-medium text-slate-700 hover:border-slate-300 hover:text-slate-900"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-white text-[10px] font-semibold">
-                {initial}
-              </span>
-              <span className="flex flex-col leading-tight">
-                <span className="text-xs font-semibold text-slate-900">{displayName}</span>
-                {businessName ? (
-                  <span className="text-[10px] text-slate-500">{businessName}</span>
-                ) : null}
-              </span>
-            </Link>
-          ) : null}
         </div>
       </div>
     </header>
