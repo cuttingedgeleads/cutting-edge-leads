@@ -243,6 +243,11 @@ export function LeadForm() {
       const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,)/;
       addressMatch = workingText.match(addressRegexLoose);
     }
+    if (!addressMatch) {
+      // Fallback: any number followed by at least one word (e.g., "5201 Meadowdale")
+      const addressNumberWordRegex = /\b\d+\s+[A-Za-z][A-Za-z0-9.-]*(?:\s+[A-Za-z0-9.-]+)*/;
+      addressMatch = workingText.match(addressNumberWordRegex);
+    }
     if (addressMatch) {
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
       if (addressInput) addressInput.value = toTitleCase(addressMatch[0].trim());
