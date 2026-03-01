@@ -2,6 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { useState } from "react";
+import { InstallAppButton } from "@/components/InstallAppButton";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -55,13 +56,16 @@ export default function LoginPage() {
             />
           </div>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-slate-900 text-white py-2 font-medium hover:bg-slate-800"
-          >
-            {loading ? "Signing in..." : "Sign in"}
-          </button>
+          <div className="grid gap-3">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-lg bg-slate-900 text-white py-2 font-medium hover:bg-slate-800"
+            >
+              {loading ? "Signing in..." : "Sign in"}
+            </button>
+            <InstallAppButton label="Download App" className="w-full" />
+          </div>
         </form>
         <div className="mt-6 text-xs text-slate-500">
           <p>Default admin is seeded in the database. See README for details.</p>
