@@ -305,13 +305,13 @@ export function LeadForm() {
       .trim()
       .replace(/^[^\w\s]+|[^\w\s]+$/g, ""); // Remove leading/trailing punctuation and special chars
 
-    const descriptionText = [noteText, remainingText].filter(Boolean).join(" ").trim();
+    const descriptionSource = noteText || remainingText;
 
-    if (descriptionText && descriptionText.length >= 5) {
+    if (descriptionSource && descriptionSource.length >= 5) {
       // Only fill description if there's meaningful text left (at least 5 chars)
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
       if (descriptionInput) {
-        descriptionInput.value = toTitleCase(descriptionText);
+        descriptionInput.value = toTitleCase(descriptionSource.trim());
       }
     }
 
