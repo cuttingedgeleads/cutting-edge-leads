@@ -98,12 +98,12 @@ export function LeadForm() {
     // v6 - Known city list for New Orleans / Jefferson Parish area
     if (!text.trim()) return;
 
-    const [firstLine, ...noteLines] = text
+    const lines = text
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter(Boolean);
 
-    const noteText = noteLines.join(" ").trim();
+    const fullText = lines.join(" ").trim();
 
     // Known cities within 100 miles of Metairie, Louisiana
     const knownCities = new Set([
@@ -198,18 +198,59 @@ export function LeadForm() {
       return null;
     };
 
-    // Working copy that we'll progressively clean as we extract data
-    let workingText = (firstLine || "").trim();
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    // 1. FIRST: Extract NAME (first 2 words at the start)
+    const findAddressInLine = (line: string) => {
+      const addressRegexStrict = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
+      let addressMatch = line.match(addressRegexStrict);
+      if (!addressMatch) {
+        // Looser: number + words until comma
+        const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,)/;
+        addressMatch = line.match(addressRegexLoose);
+      }
+      if (!addressMatch) {
+        // Fallback: number + 1-2 words max (avoid grabbing description text)
+        const addressNumberWordRegex = new RegExp(
+          "\\b\\d+\\s+[A-Za-z]+(?:\\s+(?:[A-Za-z]+|St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Ct|Court|Way|Pl|Place|Cir|Circle))?\\b",
+          "i"
+        );
+        addressMatch = line.match(addressNumberWordRegex);
+      }
+      return addressMatch;
+    };
+
+    let addressLineIndex = -1;
+    let addressMatchFromLine: RegExpMatchArray | null = null;
+    lines.some((line, index) => {
+      const match = findAddressInLine(line);
+      if (match) {
+        addressLineIndex = index;
+        addressMatchFromLine = match;
+        return true;
+      }
+      return false;
+    });
+
+    // Working copy that we'll progressively clean as we extract data
+    let workingText = fullText;
+
+    // 1. FIRST: Extract NAME (first 2 words at the start of any line)
     // Names can be "John Smith", "Mary J", "Jean-Pierre O'Connor"
-    const nameMatch = workingText.match(/^([A-Za-z][A-Za-z'-]*)\s+([A-Za-z][A-Za-z'-]*)/);
+    let nameMatch: RegExpMatchArray | null = null;
+    lines.some((line) => {
+      const match = line.match(/^([A-Za-z][A-Za-z'-]*)\s+([A-Za-z][A-Za-z'-]*)/);
+      if (match) {
+        nameMatch = match;
+        return true;
+      }
+      return false;
+    });
     if (nameMatch) {
       const fullName = toTitleCase(`${nameMatch[1]} ${nameMatch[2]}`);
       const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement;
       if (nameInput) nameInput.value = fullName;
       // Remove name from working text
-      workingText = workingText.substring(nameMatch[0].length).trim();
+      workingText = workingText.replace(nameMatch[0], " ");
     }
 
     // 2. Extract EMAIL (has @)
@@ -243,21 +284,7 @@ export function LeadForm() {
     }
 
     // 4. Extract ADDRESS (number + street name)
-    const addressRegexStrict = /\b\d+\s+[A-Za-z0-9\s.,#-]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl|Way|Circle|Cir|Parkway|Pkwy|Trail|Trl)\b/i;
-    let addressMatch = workingText.match(addressRegexStrict);
-    if (!addressMatch) {
-      // Looser: number + words until comma
-      const addressRegexLoose = /\b\d+\s+[A-Za-z0-9\s]+(?=,)/;
-      addressMatch = workingText.match(addressRegexLoose);
-    }
-    if (!addressMatch) {
-      // Fallback: number + 1-2 words max (avoid grabbing description text)
-      const addressNumberWordRegex = new RegExp(
-        "\\b\\d+\\s+[A-Za-z]+(?:\\s+(?:[A-Za-z]+|St|Street|Ave|Avenue|Rd|Road|Dr|Drive|Ln|Lane|Blvd|Boulevard|Ct|Court|Way|Pl|Place|Cir|Circle))?\\b",
-        "i"
-      );
-      addressMatch = workingText.match(addressNumberWordRegex);
-    }
+    let addressMatch = addressMatchFromLine ?? findAddressInLine(workingText);
     if (addressMatch) {
       const addressInput = document.querySelector('input[name="address"]') as HTMLInputElement;
       if (addressInput) addressInput.value = toTitleCase(addressMatch[0].trim());
@@ -298,20 +325,38 @@ export function LeadForm() {
       workingText = workingText.replace(zipMatch[0], " ");
     }
 
-    // 8. LAST: Everything remaining goes to DESCRIPTION
-    const remainingText = workingText
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .replace(/[,]/g, "") // Remove commas
+    // 8. LAST: Everything remaining on non-address lines goes to DESCRIPTION
+    const matchedTokens = [
+      nameMatch?.[0],
+      emailMatch?.[0],
+      phoneMatch?.[0],
+      addressMatch?.[0],
+      cityResult?.match,
+      stateMatch?.[0],
+      zipMatch?.[0],
+    ].filter((token): token is string => Boolean(token));
+
+    const descriptionLines = lines
+      .filter((_, index) => index !== addressLineIndex)
+      .map((line) => {
+        let cleanedLine = line;
+        matchedTokens.forEach((token) => {
+          const tokenRegex = new RegExp(escapeRegExp(token), "ig");
+          cleanedLine = cleanedLine.replace(tokenRegex, " ");
+        });
+        return cleanedLine;
+      })
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .replace(/[,]/g, "")
       .trim()
-      .replace(/^[^\w\s]+|[^\w\s]+$/g, ""); // Remove leading/trailing punctuation and special chars
+      .replace(/^[^\w\s]+|[^\w\s]+$/g, "");
 
-    const descriptionSource = noteText || remainingText;
-
-    if (descriptionSource && descriptionSource.length >= 5) {
+    if (descriptionLines && descriptionLines.length >= 5) {
       // Only fill description if there's meaningful text left (at least 5 chars)
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
       if (descriptionInput) {
-        descriptionInput.value = toTitleCase(descriptionSource.trim());
+        descriptionInput.value = toTitleCase(descriptionLines.trim());
       }
     }
 
