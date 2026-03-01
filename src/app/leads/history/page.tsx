@@ -7,7 +7,7 @@ import { PhotoLightbox } from "@/components/PhotoLightbox";
 function formatPostedAt(date: Date) {
   const postedAt = new Date(date);
   const datePart = postedAt.toLocaleDateString("en-US", {
-    month: "short",
+    month: "numeric",
     day: "numeric",
     year: "2-digit",
     timeZone: "America/Chicago",
@@ -79,7 +79,7 @@ export default async function PurchaseHistoryPage() {
                 <p className="font-medium text-slate-800">
                   {purchase.approvedAt
                     ? `${purchase.approvedAt.toLocaleDateString("en-US", {
-                        month: "short",
+                        month: "numeric",
                         day: "numeric",
                         year: "2-digit",
                         timeZone: "America/Chicago",

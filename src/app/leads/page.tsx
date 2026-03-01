@@ -14,7 +14,7 @@ function isExpired(date: Date) {
 
 function formatPostedAt(date: Date) {
   const datePart = formatCentralDate(date, {
-    month: "short",
+    month: "numeric",
     day: "numeric",
     year: "2-digit",
   });

@@ -129,7 +129,7 @@ export default async function ContractorsPage() {
                 </p>
                 <p className="text-xs text-slate-500">
                   Created {formatCentralDate(contractor.createdAt, {
-                    month: "short",
+                    month: "numeric",
                     day: "numeric",
                     year: "2-digit",
                   })}

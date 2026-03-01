@@ -60,7 +60,7 @@ export default async function ActiveLeadsPage() {
                               <li key={unlock.id}>
                                 - {contractorLabel} ({
                                   formatCentralDate(unlockedDate, {
-                                    month: "short",
+                                    month: "numeric",
                                     day: "numeric",
                                   })
                                 })
