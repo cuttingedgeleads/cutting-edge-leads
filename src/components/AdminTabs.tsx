@@ -2,7 +2,8 @@ import Link from "next/link";
 
 export function AdminTabs() {
   const tabs = [
-    { href: "/admin/leads", label: "Leads" },
+    { href: "/admin/leads", label: "Create Lead" },
+    { href: "/admin/active-leads", label: "Active Leads" },
     { href: "/admin/archived-leads", label: "Archived Leads" },
     { href: "/admin/requests", label: "Requests" },
     { href: "/admin/contractors", label: "Contractors" },
