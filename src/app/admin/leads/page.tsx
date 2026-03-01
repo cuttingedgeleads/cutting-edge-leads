@@ -51,7 +51,7 @@ export default async function AdminLeadsPage() {
                   <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
                     Price ${lead.price}
                   </div>
-                  <div className="flex flex-wrap justify-between gap-2 pt-8">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <div>
                       <p className="font-semibold">{lead.jobType}</p>
                       <p className="text-sm text-slate-700">{lead.name}</p>
@@ -62,9 +62,6 @@ export default async function AdminLeadsPage() {
                       </p>
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <DeleteLeadButton leadId={lead.id} />
-                      </div>
                       <p className="text-xs text-slate-500">{approvedCount}/2 unlocks</p>
                       <p className="text-xs text-slate-500">
                         Posted {formatCentralDateTime(lead.createdAt)}
@@ -85,7 +82,7 @@ export default async function AdminLeadsPage() {
                   </div>
                   <p className="text-sm text-slate-700">{lead.description}</p>
                   <PhotoLightbox photos={lead.photos} />
-                  <div className="text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     {expired ? (
                       <span className="text-red-600 font-semibold">Hidden (expired after 24h)</span>
                     ) : soldOut ? (
@@ -93,6 +90,13 @@ export default async function AdminLeadsPage() {
                     ) : (
                       <span className="text-green-600 font-semibold">Active</span>
                     )}
+                    <button
+                      type="button"
+                      className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      Edit
+                    </button>
+                    <DeleteLeadButton leadId={lead.id} />
                   </div>
                 </div>
               );
