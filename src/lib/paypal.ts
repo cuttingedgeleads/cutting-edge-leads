@@ -1,4 +1,8 @@
-const PAYPAL_API_BASE = process.env.PAYPAL_API_BASE || "https://api-m.paypal.com";
+const PAYPAL_API_BASE =
+  process.env.PAYPAL_API_BASE ||
+  (process.env.NODE_ENV === "production"
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com");
 
 function getPayPalCredentials() {
   const clientId = (process.env.PAYPAL_CLIENT_ID || "").trim();

@@ -48,15 +48,25 @@ export async function POST(request: NextRequest) {
     }
 
     const price = Number.isFinite(lead.price) && lead.price > 0 ? lead.price : 15;
+    console.log("Creating PayPal order", {
+      leadId,
+      contractorId: session.user.id,
+      price,
+      jobType: lead.jobType,
+    });
+
     const order = await createPayPalOrder({
       leadId,
       amount: price.toFixed(2),
       description: `${lead.jobType} lead unlock`,
     });
 
+    console.log("PayPal order created", { orderId: order?.id });
     return NextResponse.json({ orderId: order.id, price });
   } catch (error) {
-    console.error("PayPal create order failed:", error);
-    return NextResponse.json({ error: "Unable to create PayPal order" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unable to create PayPal order";
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("PayPal create order failed:", { message, stack, error });
+    return NextResponse.json({ error: message || "Unable to create PayPal order" }, { status: 500 });
   }
 }

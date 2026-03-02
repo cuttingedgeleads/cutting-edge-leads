@@ -23,43 +23,62 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
   const createOrder = async () => {
     setStatus("creating");
     setErrorMessage(null);
-    const response = await fetch("/api/paypal/create-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leadId }),
-    });
 
-    const data = await response.json();
-    if (!response.ok) {
-      const message = data?.error || "Unable to start checkout.";
+    try {
+      const response = await fetch("/api/paypal/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const message = data?.error || "Unable to start checkout.";
+        console.error("PayPal create order failed", { status: response.status, data });
+        setStatus("error");
+        setErrorMessage(message);
+        throw new Error(message);
+      }
+
+      setStatus("idle");
+      return data.orderId as string;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start checkout.";
+      console.error("PayPal create order exception", error);
       setStatus("error");
       setErrorMessage(message);
-      throw new Error(message);
+      throw error;
     }
-
-    setStatus("idle");
-    return data.orderId as string;
   };
 
   const handleApprove = async (orderId: string) => {
     setStatus("processing");
     setErrorMessage(null);
-    const response = await fetch("/api/paypal/capture-order", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, leadId }),
-    });
 
-    const data = await response.json();
-    if (!response.ok) {
-      const message = data?.error || "Unable to confirm payment.";
+    try {
+      const response = await fetch("/api/paypal/capture-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, leadId }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        const message = data?.error || "Unable to confirm payment.";
+        console.error("PayPal capture failed", { status: response.status, data });
+        setStatus("error");
+        setErrorMessage(message);
+        return;
+      }
+
+      setStatus("success");
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to confirm payment.";
+      console.error("PayPal capture exception", error);
       setStatus("error");
       setErrorMessage(message);
-      return;
     }
-
-    setStatus("success");
-    router.refresh();
   };
 
   const resetModal = () => {
@@ -109,8 +128,8 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   clientId: paypalClientId,
                   currency: "USD",
                   intent: "capture",
-                  enableFunding: "venmo,applepay",
-                  disableFunding: "paylater",
+                  enableFunding: "venmo",
+                  disableFunding: "paylater,credit",
                   components: "buttons",
                 }}
               >
@@ -118,10 +137,15 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   style={{ layout: "vertical" }}
                   createOrder={createOrder}
                   onApprove={(data) => handleApprove(data.orderID)}
+                  onCancel={() => {
+                    setStatus("idle");
+                    setErrorMessage(null);
+                  }}
                   onError={(err) => {
                     console.error("PayPal checkout error", err);
+                    const errMsg = err instanceof Error ? err.message : String(err);
                     setStatus("error");
-                    setErrorMessage("PayPal checkout failed. Please try again.");
+                    setErrorMessage(errMsg || "PayPal checkout failed. Please try again.");
                   }}
                   disabled={status === "creating" || status === "processing"}
                 />
