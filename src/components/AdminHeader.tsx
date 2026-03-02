@@ -8,11 +8,12 @@ export function AdminHeader({ name }: { name?: string | null }) {
   const displayName = normalizedName || "Admin";
 
   const handleSignOut = async () => {
+    const confirmed = window.confirm("Are you sure you want to sign out?");
+    if (!confirmed) return;
     try {
       await signOut({ callbackUrl: "/login", redirect: true });
     } catch (err) {
       console.error("Sign out error:", err);
-      // Fallback: manually redirect
       window.location.href = "/login";
     }
   };
