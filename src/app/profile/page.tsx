@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
 import { EnableNotificationsButton } from "@/components/EnableNotificationsButton";
+import { sanitizeInput } from "@/lib/sanitize";
 import {
   EditableCheckboxField,
   EditablePasswordSection,
@@ -18,7 +19,7 @@ async function updateName(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const name = String(formData.get("name") || "").trim();
+  const name = sanitizeInput(String(formData.get("name") || ""));
   if (!name) redirect("/profile?error=missing_name");
 
   await prisma.user.update({
@@ -36,7 +37,7 @@ async function updateEmail(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const email = sanitizeInput(String(formData.get("email") || "")).toLowerCase();
   if (!email) redirect("/profile?error=missing_email");
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -97,7 +98,7 @@ async function updateBusinessName(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const businessName = String(formData.get("businessName") || "").trim();
+  const businessName = sanitizeInput(String(formData.get("businessName") || ""));
   if (!businessName) {
     redirect("/profile?error=missing_business_name");
   }
@@ -117,7 +118,7 @@ async function updatePhone(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const phone = String(formData.get("phone") || "").trim();
+  const phone = sanitizeInput(String(formData.get("phone") || ""));
 
   await prisma.user.update({
     where: { id: session.user.id },
@@ -134,9 +135,9 @@ async function updateServiceCities(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const serviceCities = String(formData.get("serviceCities") || "")
+  const serviceCities = sanitizeInput(String(formData.get("serviceCities") || ""))
     .split(",")
-    .map((city) => city.trim())
+    .map((city) => sanitizeInput(city))
     .filter(Boolean)
     .join(",");
 
@@ -155,7 +156,7 @@ async function updateTimezone(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const timezone = String(formData.get("timezone") || "America/Chicago").trim();
+  const timezone = sanitizeInput(String(formData.get("timezone") || "America/Chicago"));
 
   await prisma.user.update({
     where: { id: session.user.id },
@@ -172,7 +173,9 @@ async function updatePreferredContactMethod(formData: FormData) {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const preferredContactMethod = String(formData.get("preferredContactMethod") || "EMAIL");
+  const preferredContactMethod = sanitizeInput(
+    String(formData.get("preferredContactMethod") || "EMAIL")
+  );
 
   await prisma.user.update({
     where: { id: session.user.id },

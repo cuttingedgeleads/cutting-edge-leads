@@ -6,6 +6,8 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { sendNewLeadEmail } from "@/lib/email";
 import { sendPushToUserIds } from "@/lib/push";
+import { sanitizeInput } from "@/lib/sanitize";
+import { logAudit } from "@/lib/audit";
 
 const MIN_PRICE = 20;
 
@@ -47,15 +49,15 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     
-    const rawName = String(formData.get("name") || "").trim();
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const phone = String(formData.get("phone") || "").trim();
-    const jobType = String(formData.get("jobType") || "").trim();
-    const rawDescription = String(formData.get("description") || "").trim();
-    const rawAddress = String(formData.get("address") || "").trim();
-    const rawCity = String(formData.get("city") || "").trim();
-    const rawState = String(formData.get("state") || "").trim();
-    const zip = String(formData.get("zip") || "").trim();
+    const rawName = sanitizeInput(String(formData.get("name") || ""));
+    const email = sanitizeInput(String(formData.get("email") || "")).toLowerCase();
+    const phone = sanitizeInput(String(formData.get("phone") || ""));
+    const jobType = sanitizeInput(String(formData.get("jobType") || ""));
+    const rawDescription = sanitizeInput(String(formData.get("description") || ""));
+    const rawAddress = sanitizeInput(String(formData.get("address") || ""));
+    const rawCity = sanitizeInput(String(formData.get("city") || ""));
+    const rawState = sanitizeInput(String(formData.get("state") || ""));
+    const zip = sanitizeInput(String(formData.get("zip") || ""));
 
     const name = rawName ? toTitleCase(rawName) : "";
     const description = rawDescription ? toTitleCase(rawDescription) : "";
@@ -130,6 +132,13 @@ export async function POST(request: NextRequest) {
       include: { photos: true },
     });
 
+    await logAudit({
+      action: "ADMIN_ACTION",
+      userId: session.user.id,
+      email: session.user.email,
+      details: { type: "LEAD_CREATED", leadId: lead.id },
+    });
+
     const normalizedCity = city.toLowerCase();
     const matchingContractors = await prisma.user.findMany({
       where: {
@@ -179,7 +188,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, leadId: lead.id });
   } catch (error) {
     console.error("Create lead failed:", error);
-    const message = error instanceof Error ? error.message : "Failed to create lead";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
   }
 }

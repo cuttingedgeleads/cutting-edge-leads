@@ -3,6 +3,8 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { sendPushToUserIds } from "@/lib/push";
 import { AdminHeader } from "@/components/AdminHeader";
+import { sanitizeInput } from "@/lib/sanitize";
+import { logAudit } from "@/lib/audit";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -12,7 +14,11 @@ function isExpired(date: Date) {
 
 async function approveRequest(formData: FormData) {
   "use server";
-  const requestId = String(formData.get("requestId") || "");
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "ADMIN") redirect("/");
+
+  const requestId = sanitizeInput(String(formData.get("requestId") || ""));
   if (!requestId) return;
 
   const request = await prisma.leadUnlockRequest.findUnique({
@@ -29,6 +35,12 @@ async function approveRequest(formData: FormData) {
       where: { id: requestId },
       data: { status: "REJECTED" },
     });
+    await logAudit({
+      action: "ADMIN_ACTION",
+      userId: session.user.id,
+      email: session.user.email,
+      details: { type: "REQUEST_REJECTED_EXPIRED", requestId, leadId: request.leadId },
+    });
     redirect("/admin/requests");
   }
 
@@ -37,12 +49,25 @@ async function approveRequest(formData: FormData) {
       where: { id: requestId },
       data: { status: "REJECTED" },
     });
+    await logAudit({
+      action: "ADMIN_ACTION",
+      userId: session.user.id,
+      email: session.user.email,
+      details: { type: "REQUEST_REJECTED_SOLD_OUT", requestId, leadId: request.leadId },
+    });
     redirect("/admin/requests");
   }
 
   await prisma.leadUnlockRequest.update({
     where: { id: requestId },
     data: { status: "APPROVED", approvedAt: new Date() },
+  });
+
+  await logAudit({
+    action: "ADMIN_ACTION",
+    userId: session.user.id,
+    email: session.user.email,
+    details: { type: "REQUEST_APPROVED", requestId, leadId: request.leadId, contractorId: request.contractorId },
   });
 
   if (request.contractor?.notifyUnlockApproved) {
@@ -58,12 +83,25 @@ async function approveRequest(formData: FormData) {
 
 async function rejectRequest(formData: FormData) {
   "use server";
-  const requestId = String(formData.get("requestId") || "");
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "ADMIN") redirect("/");
+
+  const requestId = sanitizeInput(String(formData.get("requestId") || ""));
   if (!requestId) return;
+
   await prisma.leadUnlockRequest.update({
     where: { id: requestId },
     data: { status: "REJECTED" },
   });
+
+  await logAudit({
+    action: "ADMIN_ACTION",
+    userId: session.user.id,
+    email: session.user.email,
+    details: { type: "REQUEST_REJECTED", requestId },
+  });
+
   redirect("/admin/requests");
 }
 

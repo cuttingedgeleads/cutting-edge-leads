@@ -15,5 +15,5 @@ export async function POST() {
     url: "/profile",
   });
 
-  return NextResponse.json({ success: true, userId: session.user.id });
+  return NextResponse.json({ success: true });
 }

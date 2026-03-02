@@ -4,17 +4,23 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCentralDate } from "@/lib/datetime";
 import { AdminHeader } from "@/components/AdminHeader";
+import { sanitizeInput } from "@/lib/sanitize";
+import { logAudit } from "@/lib/audit";
 
 async function createContractor(formData: FormData) {
   "use server";
 
-  const name = String(formData.get("name") || "").trim();
-  const businessName = String(formData.get("businessName") || "").trim();
-  const email = String(formData.get("email") || "").trim().toLowerCase();
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "ADMIN") redirect("/");
+
+  const name = sanitizeInput(String(formData.get("name") || ""));
+  const businessName = sanitizeInput(String(formData.get("businessName") || ""));
+  const email = sanitizeInput(String(formData.get("email") || "")).toLowerCase();
   const password = String(formData.get("password") || "");
-  const serviceCities = String(formData.get("serviceCities") || "")
+  const serviceCities = sanitizeInput(String(formData.get("serviceCities") || ""))
     .split(",")
-    .map((city) => city.trim())
+    .map((city) => sanitizeInput(city))
     .filter(Boolean)
     .join(",");
 
@@ -22,15 +28,13 @@ async function createContractor(formData: FormData) {
     return;
   }
 
-  // Check if email already exists
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    // Email already taken - just redirect back (you could show an error message in a real app)
     redirect("/admin/contractors?error=email_taken");
   }
 
   const passwordHash = await hash(password, 10);
-  await prisma.user.create({
+  const created = await prisma.user.create({
     data: {
       name,
       businessName,
@@ -39,6 +43,13 @@ async function createContractor(formData: FormData) {
       role: "CONTRACTOR",
       serviceCities,
     },
+  });
+
+  await logAudit({
+    action: "ADMIN_ACTION",
+    userId: session.user.id,
+    email: session.user.email,
+    details: { type: "CREATE_CONTRACTOR", contractorId: created.id, contractorEmail: created.email },
   });
 
   redirect("/admin/contractors");

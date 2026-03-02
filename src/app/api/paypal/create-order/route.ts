@@ -67,6 +67,6 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Unable to create PayPal order";
     const stack = error instanceof Error ? error.stack : undefined;
     console.error("PayPal create order failed:", { message, stack, error });
-    return NextResponse.json({ error: message || "Unable to create PayPal order" }, { status: 500 });
+    return NextResponse.json({ error: "Unable to create PayPal order" }, { status: 500 });
   }
 }

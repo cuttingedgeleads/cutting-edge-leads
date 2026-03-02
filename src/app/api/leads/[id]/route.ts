@@ -3,6 +3,8 @@ import path from "path";
 import { unlink } from "fs/promises";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { sanitizeInput } from "@/lib/sanitize";
+import { logAudit } from "@/lib/audit";
 
 export async function PUT(
   request: NextRequest,
@@ -29,20 +31,27 @@ export async function PUT(
     const updatedLead = await prisma.lead.update({
       where: { id: leadId },
       data: {
-        name: String(body.name || ""),
-        email: String(body.email || ""),
-        phone: String(body.phone || ""),
-        jobType: String(body.jobType || ""),
-        description: String(body.description || ""),
-        address: String(body.address || ""),
-        city: String(body.city || ""),
-        state: String(body.state || ""),
-        zip: String(body.zip || ""),
+        name: sanitizeInput(String(body.name || "")),
+        email: sanitizeInput(String(body.email || "")).toLowerCase(),
+        phone: sanitizeInput(String(body.phone || "")),
+        jobType: sanitizeInput(String(body.jobType || "")),
+        description: sanitizeInput(String(body.description || "")),
+        address: sanitizeInput(String(body.address || "")),
+        city: sanitizeInput(String(body.city || "")),
+        state: sanitizeInput(String(body.state || "")),
+        zip: sanitizeInput(String(body.zip || "")),
         price,
       },
     });
 
-    return NextResponse.json({ success: true, lead: updatedLead });
+    await logAudit({
+      action: "ADMIN_ACTION",
+      userId: session.user.id,
+      email: session.user.email,
+      details: { type: "LEAD_UPDATED", leadId },
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Update lead failed:", error);
     return NextResponse.json({ error: "Failed to update lead" }, { status: 500 });
@@ -94,6 +103,13 @@ export async function DELETE(
       prisma.leadPhoto.deleteMany({ where: { leadId } }),
       prisma.lead.delete({ where: { id: leadId } }),
     ]);
+
+    await logAudit({
+      action: "ADMIN_ACTION",
+      userId: session.user.id,
+      email: session.user.email,
+      details: { type: "LEAD_DELETED", leadId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

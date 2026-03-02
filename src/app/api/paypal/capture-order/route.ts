@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const stack = error instanceof Error ? error.stack : undefined;
     console.error("PayPal capture failed:", { message, stack, error });
     return NextResponse.json(
-      { error: message || "Unable to capture PayPal order" },
+      { error: "Unable to capture PayPal order" },
       { status: 500 }
     );
   }

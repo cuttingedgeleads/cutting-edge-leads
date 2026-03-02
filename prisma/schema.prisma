@@ -33,9 +33,24 @@ model User {
   notifyUnlockApproved   Boolean             @default(true)
   notifyMarketing        Boolean             @default(false)
   notifySms              Boolean             @default(false)
+  failedLoginAttempts    Int                 @default(0)
+  lockedUntil            DateTime?
   createdAt              DateTime            @default(now())
   unlocks                LeadUnlockRequest[] @relation("UserUnlocks")
   pushSubscriptions      PushSubscription[]
+  auditLogs              AuditLog[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  userId    String?
+  email     String?
+  ip        String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model PushSubscription {

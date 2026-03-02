@@ -19,12 +19,24 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email,
       password,
-      redirect: true,
+      redirect: false,
       callbackUrl: "/",
     });
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      if (result.error === "ACCOUNT_LOCKED") {
+        setError(
+          "This account has been temporarily locked due to too many failed login attempts. Try again in 10 minutes."
+        );
+      } else {
+        setError("Invalid email or password.");
+      }
+      setLoading(false);
+      return;
+    }
+
+    if (result?.url) {
+      window.location.href = result.url;
     }
     setLoading(false);
   }
