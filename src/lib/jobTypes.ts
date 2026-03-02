@@ -1,9 +1,9 @@
 export const JOB_TYPES = [
-  "Grass Maintenance",
-  "Landscaping",
-  "Grass and Landscape Maintenance",
+  "Residential Grass Maintenance",
+  "Residential Landscaping",
+  "Residential Grass and Landscape Maintenance",
   "Commercial Grass Maintenance",
-  "Commercial Landscape",
+  "Commercial Landscaping",
   "Commercial Grass and Landscape Maintenance",
 ] as const;
 
