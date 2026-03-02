@@ -10,6 +10,8 @@ import { sanitizeInput } from "@/lib/sanitize";
 import { logAudit } from "@/lib/audit";
 
 const MIN_PRICE = 20;
+const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 const stateNameToAbbr: Record<string, string> = {
   alabama: "AL", alaska: "AK", arizona: "AZ", arkansas: "AR", california: "CA",
@@ -68,6 +70,19 @@ export async function POST(request: NextRequest) {
     const photoFiles = formData.getAll("photos").filter((file): file is File => {
       return file instanceof File && file.size > 0;
     });
+
+    const invalidPhoto = photoFiles.find((file) => {
+      if (!ALLOWED_PHOTO_TYPES.has(file.type)) return true;
+      if (file.size > MAX_PHOTO_SIZE_BYTES) return true;
+      return false;
+    });
+
+    if (invalidPhoto) {
+      return NextResponse.json(
+        { error: "Photos must be JPEG, PNG, WEBP, or GIF files up to 5MB." },
+        { status: 400 }
+      );
+    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (
@@ -175,9 +190,21 @@ export async function POST(request: NextRequest) {
         role: "CONTRACTOR",
         notifyNewLeads: true,
       },
+      select: {
+        id: true,
+        notifyJobTypes: true,
+      },
     });
 
-    const pushRecipients = pushContractors.map((contractor) => contractor.id);
+    const pushRecipients = pushContractors
+      .filter((contractor) => {
+        const preferences = Array.isArray(contractor.notifyJobTypes)
+          ? contractor.notifyJobTypes
+          : null;
+        if (!preferences) return true;
+        return preferences.includes(lead.jobType);
+      })
+      .map((contractor) => contractor.id);
 
     await sendPushToUserIds(pushRecipients, {
       title: "New lead available",

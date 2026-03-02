@@ -1,5 +1,6 @@
 // Simple in-memory rate limiter
-// For production, consider Upstash Redis for persistence across serverless instances
+// NOTE: This resets on deploy/restart and doesn't share state across instances.
+// For production, consider Upstash Redis for persistence across serverless instances.
 
 type RateLimitOptions = {
   limit: number;

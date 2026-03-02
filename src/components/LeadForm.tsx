@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { LeadPhotoInput, LeadPhotoInputRef } from "@/components/LeadPhotoInput";
+import { JOB_TYPES } from "@/lib/jobTypes";
 
 const MIN_PRICE = 20;
 const MAX_IMAGE_SIZE = 800; // Max width/height in pixels
@@ -624,9 +625,9 @@ export function LeadForm() {
     >
       {/* Quick Paste Section */}
       <div className="sm:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <label className="text-sm font-medium text-blue-900">
-          ⚡ Quick Paste
-          <span className="ml-2 text-xs font-normal text-blue-700">
+        <label className="text-blue-900">
+          <span className="block text-sm font-medium">⚡ Quick Paste</span>
+          <span className="mt-1 block text-xs font-normal text-blue-700">
             Paste contact info and we'll auto-fill the form
           </span>
         </label>
@@ -688,12 +689,11 @@ export function LeadForm() {
           required
         >
           <option value="">Select a job type</option>
-          <option value="Grass Maintenance">Grass Maintenance</option>
-          <option value="Landscaping">Landscaping</option>
-          <option value="Grass and Landscape Maintenance">
-            Grass and Landscape Maintenance
-          </option>
-          <option value="Commercial Maintenance">Commercial Maintenance</option>
+          {JOB_TYPES.map((jobType) => (
+            <option key={jobType} value={jobType}>
+              {jobType}
+            </option>
+          ))}
         </select>
       </div>
       <div>

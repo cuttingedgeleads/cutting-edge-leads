@@ -53,9 +53,8 @@ npm run dev
 
 Visit http://localhost:3000
 
-## Default admin credentials
-- Email: `admin@cuttingedge.local`
-- Password: `Admin123!`
+## Admin access
+- Admin credentials are provisioned per environment.
 
 ## Usage
 - Admin login → create contractor accounts and new leads

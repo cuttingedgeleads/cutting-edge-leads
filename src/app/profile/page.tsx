@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { NavBar } from "@/components/NavBar";
 import { EnableNotificationsButton } from "@/components/EnableNotificationsButton";
 import { sanitizeInput } from "@/lib/sanitize";
+import { JOB_TYPES } from "@/lib/jobTypes";
 import {
   EditableCheckboxField,
   EditablePasswordSection,
@@ -202,6 +203,26 @@ async function updateNotifyNewLeads(formData: FormData) {
   redirect("/profile?success=notifications");
 }
 
+async function updateNotifyJobTypes(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const selectedTypes = formData
+    .getAll("notifyJobTypes")
+    .map((value) => String(value))
+    .filter((value) => JOB_TYPES.includes(value as (typeof JOB_TYPES)[number]));
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { notifyJobTypes: selectedTypes },
+  });
+
+  redirect("/profile?success=notifications");
+}
+
 async function updateNotifyUnlockApproved(formData: FormData) {
   "use server";
 
@@ -269,11 +290,19 @@ export default async function ProfilePage() {
       timezone: true,
       preferredContactMethod: true,
       notifyNewLeads: true,
+      notifyJobTypes: true,
       notifyUnlockApproved: true,
       notifyMarketing: true,
       notifySms: true,
     },
   });
+
+  const storedJobTypes = Array.isArray(user?.notifyJobTypes)
+    ? user?.notifyJobTypes.filter((value) =>
+        JOB_TYPES.includes(value as (typeof JOB_TYPES)[number])
+      )
+    : null;
+  const selectedJobTypes = storedJobTypes ?? [...JOB_TYPES];
 
   return (
     <div className="min-h-screen">
@@ -446,6 +475,34 @@ export default async function ProfilePage() {
               description="Occasional product tips and announcements."
             />
           </div>
+          <form action={updateNotifyJobTypes} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-700">Lead job type alerts</p>
+              <p className="text-xs text-slate-500">
+                Pick which job types you want to receive push notifications for.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {JOB_TYPES.map((jobType) => (
+                <label key={jobType} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    name="notifyJobTypes"
+                    value={jobType}
+                    defaultChecked={selectedJobTypes.includes(jobType)}
+                    className="h-4 w-4"
+                  />
+                  <span>{jobType}</span>
+                </label>
+              ))}
+            </div>
+            <button
+              type="submit"
+              className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              Save job type preferences
+            </button>
+          </form>
         </section>
       </main>
     </div>

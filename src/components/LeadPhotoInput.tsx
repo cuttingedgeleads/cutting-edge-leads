@@ -77,7 +77,7 @@ export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoIn
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         capture="environment"
         className="hidden"
         onChange={(e) => {
@@ -88,7 +88,7 @@ export const LeadPhotoInput = forwardRef<LeadPhotoInputRef>(function LeadPhotoIn
       <input
         ref={uploadInputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/gif"
         multiple
         className="hidden"
         onChange={(e) => {

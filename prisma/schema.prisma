@@ -30,6 +30,7 @@ model User {
   timezone               String              @default("America/Chicago")
   preferredContactMethod String              @default("EMAIL")
   notifyNewLeads         Boolean             @default(true)
+  notifyJobTypes         Json?
   notifyUnlockApproved   Boolean             @default(true)
   notifyMarketing        Boolean             @default(false)
   notifySms              Boolean             @default(false)

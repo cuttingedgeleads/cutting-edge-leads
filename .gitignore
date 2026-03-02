@@ -34,6 +34,11 @@ yarn-error.log*
 .env*
 !.env.example
 
+# secrets
+pp_client.txt
+pp_secret.txt
+temp_*
+
 # prisma local db
 /dev.db
 /dev.db-journal

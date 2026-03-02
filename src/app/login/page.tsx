@@ -79,9 +79,6 @@ export default function LoginPage() {
             <InstallAppButton label="Download App" className="w-full" />
           </div>
         </form>
-        <div className="mt-6 text-xs text-slate-500">
-          <p>Default admin is seeded in the database. See README for details.</p>
-        </div>
       </div>
     </div>
   );
