@@ -41,29 +41,6 @@ function formatRelativePostedAt(date: Date) {
   return `Posted ${diffDays} days ago`;
 }
 
-async function requestUnlock(formData: FormData) {
-  "use server";
-  const leadId = String(formData.get("leadId") || "");
-  const contractorId = String(formData.get("contractorId") || "");
-  if (!leadId || !contractorId) return;
-
-  const lead = await prisma.lead.findUnique({
-    where: { id: leadId },
-    include: { unlocks: { where: { status: "APPROVED" } } },
-  });
-  if (!lead) return;
-  if (isExpired(lead.createdAt)) return;
-  if (lead.unlocks.length >= 2) return;
-
-  await prisma.leadUnlockRequest.upsert({
-    where: { leadId_contractorId: { leadId, contractorId } },
-    update: {},
-    create: { leadId, contractorId, status: "PENDING" },
-  });
-
-  redirect("/leads");
-}
-
 export default async function LeadsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -81,6 +58,8 @@ export default async function LeadsPage() {
     where: { id: session.user.id },
     select: { name: true, serviceCities: true, businessName: true },
   });
+
+  const paypalClientId = process.env.PAYPAL_CLIENT_ID ?? "";
 
   const allowedCities = (contractor?.serviceCities || "")
     .split(",")
@@ -118,7 +97,7 @@ export default async function LeadsPage() {
         <header className="space-y-2">
           <h2 className="text-xl font-semibold">Available leads</h2>
           <p className="text-sm text-slate-600">
-            Request unlocks for leads. Admin will approve manually (payment handled offline).
+            Unlock a lead instantly with PayPal, Venmo, or Apple Pay.
           </p>
           <div className="flex flex-wrap gap-2 items-center text-sm">
             <label className="font-medium">Service area filter (placeholder)</label>
@@ -173,16 +152,15 @@ export default async function LeadsPage() {
                     </span>
                   ) : myRequest?.status === "PENDING" ? (
                     <span className="text-sm font-semibold text-amber-600">
-                      Request pending approval.
+                      Payment in progress.
                     </span>
                   ) : (
                     <UnlockButton
                       leadId={lead.id}
-                      contractorId={session.user.id}
                       jobType={lead.jobType}
                       city={lead.city}
                       price={lead.price}
-                      onSubmit={requestUnlock}
+                      paypalClientId={paypalClientId}
                     />
                   )}
                 </div>

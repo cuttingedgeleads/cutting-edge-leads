@@ -13,6 +13,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^9.0.0",
     "@prisma/client": "^6.15.0",
     "@types/nodemailer": "^7.0.11",
     "@types/web-push": "^3.6.4",
