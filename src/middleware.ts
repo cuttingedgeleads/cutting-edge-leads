@@ -11,7 +11,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+  // Skip origin check for NextAuth routes - it has its own CSRF protection
+  const isAuthRoute = request.nextUrl.pathname.startsWith("/api/auth");
+  
+  if (!isAuthRoute && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
     const origin = request.headers.get("origin");
     const host = request.headers.get("host");
     if (origin && host) {
