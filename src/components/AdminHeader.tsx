@@ -7,10 +7,14 @@ export function AdminHeader({ name }: { name?: string | null }) {
   const normalizedName = name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
   const displayName = normalizedName || "Admin";
 
-  const handleSignOut = () => {
-    const confirmed = window.confirm("Are you sure you want to sign out?");
-    if (!confirmed) return;
-    signOut({ callbackUrl: "/login" });
+  const handleSignOut = async () => {
+    try {
+      await signOut({ callbackUrl: "/login", redirect: true });
+    } catch (err) {
+      console.error("Sign out error:", err);
+      // Fallback: manually redirect
+      window.location.href = "/login";
+    }
   };
 
   return (

@@ -32,10 +32,14 @@ export function NavBar({
   const initial = normalizedName?.[0]?.toUpperCase() || "P";
   const displayName = normalizedName || "Profile";
 
-  const handleSignOut = () => {
-    const confirmed = window.confirm("Are you sure you want to sign out?");
-    if (!confirmed) return;
-    signOut({ callbackUrl: "/login" });
+  const handleSignOut = async () => {
+    try {
+      await signOut({ callbackUrl: "/login", redirect: true });
+    } catch (err) {
+      console.error("Sign out error:", err);
+      // Fallback: manually redirect
+      window.location.href = "/login";
+    }
   };
 
   return (
