@@ -59,7 +59,7 @@ export default async function LeadsPage() {
     select: { name: true, serviceCities: true, businessName: true },
   });
 
-  const paypalClientId = process.env.PAYPAL_CLIENT_ID ?? "";
+  const paypalClientId = (process.env.PAYPAL_CLIENT_ID ?? "").trim();
 
   const allowedCities = (contractor?.serviceCities || "")
     .split(",")

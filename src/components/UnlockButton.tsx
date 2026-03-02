@@ -110,6 +110,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   currency: "USD",
                   intent: "capture",
                   enableFunding: "venmo,applepay",
+                  disableFunding: "paylater",
                   components: "buttons",
                 }}
               >

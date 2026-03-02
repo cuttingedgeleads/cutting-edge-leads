@@ -1,8 +1,8 @@
 const PAYPAL_API_BASE = process.env.PAYPAL_API_BASE || "https://api-m.paypal.com";
 
 function getPayPalCredentials() {
-  const clientId = process.env.PAYPAL_CLIENT_ID || "";
-  const secret = process.env.PAYPAL_SECRET || "";
+  const clientId = (process.env.PAYPAL_CLIENT_ID || "").trim();
+  const secret = (process.env.PAYPAL_SECRET || "").trim();
   if (!clientId || !secret) {
     throw new Error("Missing PayPal credentials");
   }

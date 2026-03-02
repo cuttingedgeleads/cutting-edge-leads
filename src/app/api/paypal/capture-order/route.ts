@@ -42,7 +42,16 @@ export async function POST(request: NextRequest) {
 
     const capture = await capturePayPalOrder(orderId);
     if (capture?.status !== "COMPLETED") {
-      return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
+      console.error("PayPal capture returned non-completed status", {
+        orderId,
+        status: capture?.status,
+        details: capture?.details,
+      });
+      const statusDetail = capture?.status ? ` (${capture.status})` : "";
+      return NextResponse.json(
+        { error: `Payment not completed${statusDetail}` },
+        { status: 400 }
+      );
     }
 
     const purchaseUnit = capture.purchase_units?.[0];
@@ -71,7 +80,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, unlockId: unlock.id });
   } catch (error) {
-    console.error("PayPal capture failed:", error);
-    return NextResponse.json({ error: "Unable to capture PayPal order" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("PayPal capture failed:", { message, stack, error });
+    return NextResponse.json(
+      { error: message || "Unable to capture PayPal order" },
+      { status: 500 }
+    );
   }
 }
