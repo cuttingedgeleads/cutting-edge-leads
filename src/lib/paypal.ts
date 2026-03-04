@@ -54,6 +54,9 @@ export async function createPayPalOrder({
     },
     body: JSON.stringify({
       intent: "CAPTURE",
+      application_context: {
+        shipping_preference: "NO_SHIPPING",
+      },
       purchase_units: [
         {
           custom_id: leadId,
