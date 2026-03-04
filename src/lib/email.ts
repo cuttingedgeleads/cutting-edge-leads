@@ -62,7 +62,7 @@ export async function sendNewLeadEmail(options: {
             subject: `New Lead Available: ${options.jobType} in ${options.city}`,
             html: `
               <div style="font-family: Arial, sans-serif; color: #0f172a;">
-                <h2>New Lead available</h2>
+                <h2>New Lead Available</h2>
                 <p><strong>${options.jobType}</strong> - ${options.city}, ${options.zip}</p>
                 <p>${options.description}</p>
                 ${photoMarkup}
