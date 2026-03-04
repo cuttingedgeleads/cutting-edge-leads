@@ -154,7 +154,6 @@ export async function POST(request: NextRequest) {
       details: { type: "LEAD_CREATED", leadId: lead.id },
     });
 
-    const normalizedCity = city.toLowerCase();
     const matchingContractors = await prisma.user.findMany({
       where: {
         role: "CONTRACTOR",
@@ -162,24 +161,16 @@ export async function POST(request: NextRequest) {
       },
       select: {
         email: true,
-        serviceCities: true,
         notifyJobTypes: true,
       },
     });
 
     const recipients = matchingContractors
       .filter((contractor) => {
-        const allowedCities = (contractor.serviceCities || "")
-          .split(",")
-          .map((entry) => entry.trim().toLowerCase())
-          .filter(Boolean);
-        const cityMatch = allowedCities.length === 0 || allowedCities.includes(normalizedCity);
-        if (!cityMatch) return false;
-
         const preferences = Array.isArray(contractor.notifyJobTypes)
           ? contractor.notifyJobTypes
           : null;
-        if (!preferences) return true;
+        if (!preferences || preferences.length === 0) return true;
         return preferences.includes(lead.jobType);
       })
       .map((contractor) => contractor.email)
