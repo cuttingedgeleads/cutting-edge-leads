@@ -252,12 +252,10 @@ export async function POST(request: NextRequest) {
 
     console.log("[Lead Create] SMS recipients after filtering:", smsRecipients);
 
-    const smsMessage = `Cutting Edge Leads
-
+    const smsMessage = `New Cutting Edge Lead
 Job: ${lead.jobType}
 Location: ${lead.city}, ${lead.state} ${lead.zip}
 Price: $${lead.price}
-
 Log in to view: cuttingedgeautodetaling.com`;
 
     await Promise.all(
