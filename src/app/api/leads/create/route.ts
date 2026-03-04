@@ -6,6 +6,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { sendNewLeadEmail } from "@/lib/email";
 import { sendPushToUserIds } from "@/lib/push";
+import { sendSms } from "@/lib/sms";
 import { sanitizeInput } from "@/lib/sanitize";
 import { logAudit } from "@/lib/audit";
 
@@ -181,11 +182,13 @@ export async function POST(request: NextRequest) {
 
     console.log("[Lead Create] Email recipients after filtering:", recipients);
 
+    const loginUrl = `${process.env.NEXTAUTH_URL || "https://www.cuttingedgeautodetaling.com"}/login`;
+
     if (recipients.length > 0) {
       console.log("[Lead Create] Calling sendNewLeadEmail...");
       await sendNewLeadEmail({
         to: recipients,
-        loginUrl: `${process.env.NEXTAUTH_URL || "https://www.cuttingedgeautodetaling.com"}/login`,
+        loginUrl,
         jobType: lead.jobType,
         city: lead.city,
         zip: lead.zip,
@@ -220,6 +223,42 @@ export async function POST(request: NextRequest) {
       body: `${lead.jobType} in ${lead.city}`,
       url: "/leads",
     });
+
+    const smsContractors = await prisma.user.findMany({
+      where: {
+        role: "CONTRACTOR",
+        notifyNewLeads: true,
+        notifySms: true,
+        AND: [
+          { phone: { not: null } },
+          { phone: { not: "" } },
+        ],
+      },
+      select: {
+        phone: true,
+        notifyJobTypes: true,
+      },
+    });
+
+    const smsRecipients = smsContractors
+      .filter((contractor) => {
+        const preferences = Array.isArray(contractor.notifyJobTypes)
+          ? contractor.notifyJobTypes
+          : null;
+        if (!preferences || preferences.length === 0) return true;
+        return preferences.includes(lead.jobType);
+      })
+      .map((contractor) => contractor.phone)
+      .filter(Boolean);
+
+    await Promise.all(
+      smsRecipients.map((phoneNumber) =>
+        sendSms(
+          phoneNumber,
+          `New ${lead.jobType} lead in ${lead.city}! Log in to view: ${loginUrl}`
+        )
+      )
+    );
 
     return NextResponse.json({ success: true, leadId: lead.id });
   } catch (error) {
