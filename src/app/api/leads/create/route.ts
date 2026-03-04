@@ -255,9 +255,7 @@ export async function POST(request: NextRequest) {
     const smsMessage = `Cutting Edge Leads
 
 Job: ${lead.jobType}
-Customer: ${lead.name}
-Phone: ${lead.phone}
-${lead.email ? `Email: ${lead.email}\n` : ""}Address: ${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}
+Location: ${lead.city}, ${lead.state} ${lead.zip}
 Price: $${lead.price}
 
 Log in to view: cuttingedgeautodetaling.com/login`;
