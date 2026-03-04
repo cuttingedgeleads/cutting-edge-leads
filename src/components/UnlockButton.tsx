@@ -28,7 +28,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
       const response = await fetch("/api/paypal/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId, vault: true }),
+        body: JSON.stringify({ leadId }),
       });
 
       const data = await response.json();
@@ -130,7 +130,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   intent: "capture",
                   vault: true,
                   enableFunding: ["venmo", "applepay"],
-                  disableFunding: ["paylater", "credit"],
+                  disableFunding: ["paylater", "credit", "card"],
                   components: "buttons,funding-eligibility",
                 }}
               >
