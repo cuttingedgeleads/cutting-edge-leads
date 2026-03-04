@@ -158,20 +158,32 @@ export async function POST(request: NextRequest) {
     const matchingContractors = await prisma.user.findMany({
       where: {
         role: "CONTRACTOR",
-        serviceCities: {
-          contains: normalizedCity,
-        },
+        notifyNewLeads: true,
+      },
+      select: {
+        email: true,
+        serviceCities: true,
+        notifyJobTypes: true,
       },
     });
 
     const recipients = matchingContractors
-      .filter((contractor) =>
-        contractor.serviceCities
+      .filter((contractor) => {
+        const allowedCities = (contractor.serviceCities || "")
           .split(",")
           .map((entry) => entry.trim().toLowerCase())
-          .includes(normalizedCity)
-      )
-      .map((contractor) => contractor.email);
+          .filter(Boolean);
+        const cityMatch = allowedCities.length === 0 || allowedCities.includes(normalizedCity);
+        if (!cityMatch) return false;
+
+        const preferences = Array.isArray(contractor.notifyJobTypes)
+          ? contractor.notifyJobTypes
+          : null;
+        if (!preferences) return true;
+        return preferences.includes(lead.jobType);
+      })
+      .map((contractor) => contractor.email)
+      .filter(Boolean);
 
     if (recipients.length > 0) {
       await sendNewLeadEmail({
