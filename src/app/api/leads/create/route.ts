@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       console.log("[Lead Create] Calling sendNewLeadEmail...");
       await sendNewLeadEmail({
         to: recipients,
-        loginUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/login`,
+        loginUrl: `${process.env.NEXTAUTH_URL || "https://www.cuttingedgeautodetaling.com"}/login`,
         jobType: lead.jobType,
         city: lead.city,
         zip: lead.zip,
