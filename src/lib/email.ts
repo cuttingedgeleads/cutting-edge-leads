@@ -29,24 +29,35 @@ export async function sendNewLeadEmail(options: {
     : "";
 
   try {
-    const result = await resend.emails.send({
-      from: "Cutting Edge Leads <noreply@cuttingedgeautodetaling.com>",
-      to: "noreply@cuttingedgeautodetaling.com",
-      bcc: options.to,
-      subject: `New Lead: ${options.jobType} in ${options.city}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #0f172a;">
-          <h2>New lead available</h2>
-          <p><strong>${options.jobType}</strong> - ${options.city}, ${options.zip}</p>
-          <p>${options.description}</p>
-          ${photoMarkup}
-          <p style="margin-top: 16px;">
-            <a href="${options.loginUrl}" style="background:#0f172a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;">Login to request</a>
-          </p>
-        </div>
-      `,
-    });
-    console.log("[Email] Send result:", JSON.stringify(result));
+    // Send individual emails to each contractor
+    const results = await Promise.all(
+      options.to.map(async (recipient) => {
+        try {
+          const result = await resend.emails.send({
+            from: "Cutting Edge Leads <noreply@cuttingedgeautodetaling.com>",
+            to: recipient,
+            subject: `New Lead: ${options.jobType} in ${options.city}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; color: #0f172a;">
+                <h2>New lead available</h2>
+                <p><strong>${options.jobType}</strong> - ${options.city}, ${options.zip}</p>
+                <p>${options.description}</p>
+                ${photoMarkup}
+                <p style="margin-top: 16px;">
+                  <a href="${options.loginUrl}" style="background:#0f172a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;">Login to request</a>
+                </p>
+              </div>
+            `,
+          });
+          console.log(`[Email] Sent to ${recipient}:`, JSON.stringify(result));
+          return { recipient, success: true, result };
+        } catch (err) {
+          console.error(`[Email] Failed to send to ${recipient}:`, err);
+          return { recipient, success: false, error: err };
+        }
+      })
+    );
+    console.log("[Email] All sends complete:", results.length);
   } catch (error) {
     console.error("[Email] Failed to send:", error);
   }
