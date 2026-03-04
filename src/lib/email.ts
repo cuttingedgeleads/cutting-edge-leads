@@ -22,10 +22,33 @@ export async function sendNewLeadEmail(options: {
     return;
   }
 
+  const baseUrl = process.env.NEXTAUTH_URL || "https://www.cuttingedgeautodetaling.com";
+  const attachments: Array<{ filename: string; content: string; contentType?: string; contentId?: string }> = [];
+
   const photoMarkup = options.photos && options.photos.length > 0
-    ? options.photos.map((url, i) => 
-        `<img src="${url}" alt="Lead photo ${i + 1}" style="max-width: 240px; border-radius: 12px; margin: 8px 8px 8px 0;" />`
-      ).join("")
+    ? options.photos.map((url, i) => {
+        if (url.startsWith("data:")) {
+          const match = url.match(/^data:(.+?);base64,(.+)$/);
+          if (match) {
+            const [, contentType, content] = match;
+            const cid = `lead-photo-${i + 1}`;
+            const extension = contentType.split("/")[1] || "jpg";
+            attachments.push({
+              filename: `${cid}.${extension}`,
+              content,
+              contentType,
+              contentId: cid,
+            });
+            return `<img src="cid:${cid}" alt="Lead photo ${i + 1}" style="max-width: 240px; border-radius: 12px; margin: 8px 8px 8px 0;" />`;
+          }
+        }
+
+        const absoluteUrl = url.startsWith("http")
+          ? url
+          : `${baseUrl}${url.startsWith("/") ? "" : "/"}${url}`;
+
+        return `<img src="${absoluteUrl}" alt="Lead photo ${i + 1}" style="max-width: 240px; border-radius: 12px; margin: 8px 8px 8px 0;" />`;
+      }).join("")
     : "";
 
   try {
@@ -39,7 +62,7 @@ export async function sendNewLeadEmail(options: {
             subject: `New Lead: ${options.jobType} in ${options.city}`,
             html: `
               <div style="font-family: Arial, sans-serif; color: #0f172a;">
-                <h2>New lead available</h2>
+                <h2>New Lead available</h2>
                 <p><strong>${options.jobType}</strong> - ${options.city}, ${options.zip}</p>
                 <p>${options.description}</p>
                 ${photoMarkup}
@@ -48,6 +71,7 @@ export async function sendNewLeadEmail(options: {
                 </p>
               </div>
             `,
+            ...(attachments.length > 0 ? { attachments } : {}),
           });
           console.log(`[Email] Sent to ${recipient}:`, JSON.stringify(result));
           return { recipient, success: true, result };
