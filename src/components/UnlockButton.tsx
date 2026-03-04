@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { FUNDING, PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useRouter } from "next/navigation";
 
 interface UnlockButtonProps {
@@ -134,22 +134,41 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   components: "buttons,funding-eligibility",
                 }}
               >
-                <PayPalButtons
-                  style={{ layout: "vertical" }}
-                  createOrder={createOrder}
-                  onApprove={(data) => handleApprove(data.orderID)}
-                  onCancel={() => {
-                    setStatus("idle");
-                    setErrorMessage(null);
-                  }}
-                  onError={(err) => {
-                    console.error("PayPal checkout error", err);
-                    const errMsg = err instanceof Error ? err.message : String(err);
-                    setStatus("error");
-                    setErrorMessage(errMsg || "PayPal checkout failed. Please try again.");
-                  }}
-                  disabled={status === "creating" || status === "processing"}
-                />
+                <div className="space-y-3">
+                  <PayPalButtons
+                    style={{ layout: "vertical" }}
+                    createOrder={createOrder}
+                    onApprove={(data) => handleApprove(data.orderID)}
+                    onCancel={() => {
+                      setStatus("idle");
+                      setErrorMessage(null);
+                    }}
+                    onError={(err) => {
+                      console.error("PayPal checkout error", err);
+                      const errMsg = err instanceof Error ? err.message : String(err);
+                      setStatus("error");
+                      setErrorMessage(errMsg || "PayPal checkout failed. Please try again.");
+                    }}
+                    disabled={status === "creating" || status === "processing"}
+                  />
+                  <PayPalButtons
+                    fundingSource={FUNDING.VENMO}
+                    style={{ layout: "vertical", color: "blue" }}
+                    createOrder={createOrder}
+                    onApprove={(data) => handleApprove(data.orderID)}
+                    onCancel={() => {
+                      setStatus("idle");
+                      setErrorMessage(null);
+                    }}
+                    onError={(err) => {
+                      console.error("Venmo checkout error", err);
+                      const errMsg = err instanceof Error ? err.message : String(err);
+                      setStatus("error");
+                      setErrorMessage(errMsg || "Venmo checkout failed. Please try again.");
+                    }}
+                    disabled={status === "creating" || status === "processing"}
+                  />
+                </div>
               </PayPalScriptProvider>
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
