@@ -13,6 +13,16 @@ const createClient = () => {
   return twilio(apiKeySid, apiKeySecret, { accountSid });
 };
 
+const normalizePhone = (value: string) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (trimmed.startsWith("+")) return trimmed;
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+};
+
 export const sendSms = async (to: string, body: string) => {
   const from = process.env.TWILIO_PHONE_NUMBER;
   if (!from) {
@@ -20,11 +30,18 @@ export const sendSms = async (to: string, body: string) => {
     return;
   }
 
+  const normalizedTo = normalizePhone(to);
+  if (!normalizedTo) {
+    console.warn("[SMS] Invalid phone number:", to);
+    return;
+  }
+
   const client = createClient();
   if (!client) return;
 
   try {
-    await client.messages.create({ to, from, body });
+    console.log("[SMS] Sending SMS to", normalizedTo);
+    await client.messages.create({ to: normalizedTo, from, body });
   } catch (error) {
     console.error("[SMS] Failed to send SMS:", error);
   }

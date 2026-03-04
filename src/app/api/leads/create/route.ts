@@ -237,6 +237,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log("[Lead Create] Found contractors with SMS enabled:", smsContractors.length);
+
     const smsRecipients = smsContractors
       .filter((contractor) => {
         const preferences = Array.isArray(contractor.notifyJobTypes)
@@ -247,6 +249,8 @@ export async function POST(request: NextRequest) {
       })
       .map((contractor) => contractor.phone)
       .filter(Boolean);
+
+    console.log("[Lead Create] SMS recipients after filtering:", smsRecipients);
 
     await Promise.all(
       smsRecipients.map((phoneNumber) =>
