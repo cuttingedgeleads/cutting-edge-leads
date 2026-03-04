@@ -59,7 +59,7 @@ export async function sendNewLeadEmail(options: {
           const result = await resend.emails.send({
             from: "Cutting Edge Leads <noreply@cuttingedgeautodetaling.com>",
             to: recipient,
-            subject: `New Lead: ${options.jobType} in ${options.city}`,
+            subject: `New Lead Available: ${options.jobType} in ${options.city}`,
             html: `
               <div style="font-family: Arial, sans-serif; color: #0f172a;">
                 <h2>New Lead available</h2>
