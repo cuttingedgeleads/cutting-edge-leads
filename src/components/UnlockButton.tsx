@@ -28,7 +28,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
       const response = await fetch("/api/paypal/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId }),
+        body: JSON.stringify({ leadId, vault: true }),
       });
 
       const data = await response.json();
@@ -117,7 +117,6 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   <span className="font-medium">Price:</span> ${price}
                 </p>
               </div>
-              {/* Vaulting disabled: no save-card checkbox. */}
               <p className="text-xs text-slate-500">
                 Pay with PayPal, Venmo, or Apple Pay (where available).
               </p>
@@ -129,6 +128,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   clientId: paypalClientId,
                   currency: "USD",
                   intent: "capture",
+                  vault: true,
                   enableFunding: ["venmo", "applepay"],
                   disableFunding: ["paylater", "credit"],
                   components: "buttons,funding-eligibility",
