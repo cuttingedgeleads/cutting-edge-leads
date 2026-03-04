@@ -28,7 +28,7 @@ export async function sendNewLeadEmail(options: {
 
   try {
     const result = await resend.emails.send({
-      from: "Cutting Edge Leads <onboarding@resend.dev>",
+      from: "Cutting Edge Leads <noreply@cuttingedgeautodetaling.com>",
       to: options.to,
       subject: `New Lead: ${options.jobType} in ${options.city}`,
       html: `
