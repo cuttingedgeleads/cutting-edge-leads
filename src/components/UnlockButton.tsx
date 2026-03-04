@@ -128,27 +128,67 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   clientId: paypalClientId,
                   currency: "USD",
                   intent: "capture",
-                  components: "buttons",
-                  "enable-funding": "venmo",
+                  components: "buttons,funding-eligibility",
+                  "enable-funding": "venmo,applepay",
                   "disable-funding": "card,credit,paylater",
                 }}
               >
-                <PayPalButtons
-                  style={{ layout: "vertical" }}
-                  createOrder={createOrder}
-                  onApprove={(data) => handleApprove(data.orderID)}
-                  onCancel={() => {
-                    setStatus("idle");
-                    setErrorMessage(null);
-                  }}
-                  onError={(err) => {
-                    console.error("PayPal checkout error", err);
-                    const errMsg = err instanceof Error ? err.message : String(err);
-                    setStatus("error");
-                    setErrorMessage(errMsg || "Checkout failed. Please try again.");
-                  }}
-                  disabled={status === "creating" || status === "processing"}
-                />
+                <div className="space-y-2">
+                  {/* PayPal Button */}
+                  <PayPalButtons
+                    fundingSource={FUNDING.PAYPAL}
+                    style={{ layout: "vertical", label: "paypal" }}
+                    createOrder={createOrder}
+                    onApprove={(data) => handleApprove(data.orderID)}
+                    onCancel={() => {
+                      setStatus("idle");
+                      setErrorMessage(null);
+                    }}
+                    onError={(err) => {
+                      console.error("PayPal checkout error", err);
+                      const errMsg = err instanceof Error ? err.message : String(err);
+                      setStatus("error");
+                      setErrorMessage(errMsg || "Checkout failed. Please try again.");
+                    }}
+                    disabled={status === "creating" || status === "processing"}
+                  />
+                  {/* Venmo Button */}
+                  <PayPalButtons
+                    fundingSource={FUNDING.VENMO}
+                    style={{ layout: "vertical" }}
+                    createOrder={createOrder}
+                    onApprove={(data) => handleApprove(data.orderID)}
+                    onCancel={() => {
+                      setStatus("idle");
+                      setErrorMessage(null);
+                    }}
+                    onError={(err) => {
+                      console.error("Venmo checkout error", err);
+                      const errMsg = err instanceof Error ? err.message : String(err);
+                      setStatus("error");
+                      setErrorMessage(errMsg || "Checkout failed. Please try again.");
+                    }}
+                    disabled={status === "creating" || status === "processing"}
+                  />
+                  {/* Apple Pay Button */}
+                  <PayPalButtons
+                    fundingSource={FUNDING.APPLEPAY}
+                    style={{ layout: "vertical" }}
+                    createOrder={createOrder}
+                    onApprove={(data) => handleApprove(data.orderID)}
+                    onCancel={() => {
+                      setStatus("idle");
+                      setErrorMessage(null);
+                    }}
+                    onError={(err) => {
+                      console.error("Apple Pay checkout error", err);
+                      const errMsg = err instanceof Error ? err.message : String(err);
+                      setStatus("error");
+                      setErrorMessage(errMsg || "Checkout failed. Please try again.");
+                    }}
+                    disabled={status === "creating" || status === "processing"}
+                  />
+                </div>
               </PayPalScriptProvider>
             ) : (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
