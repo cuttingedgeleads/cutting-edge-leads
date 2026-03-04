@@ -13,7 +13,7 @@ export async function sendNewLeadEmail(options: {
   city: string;
   zip: string;
   description: string;
-  photoUrl?: string | null;
+  photos?: string[];
 }) {
   console.log("[Email] sendNewLeadEmail called with recipients:", options.to);
   
@@ -22,8 +22,10 @@ export async function sendNewLeadEmail(options: {
     return;
   }
 
-  const photoMarkup = options.photoUrl
-    ? `<img src="${options.photoUrl}" alt="Lead photo" style="max-width: 240px; border-radius: 12px;" />`
+  const photoMarkup = options.photos && options.photos.length > 0
+    ? options.photos.map((url, i) => 
+        `<img src="${url}" alt="Lead photo ${i + 1}" style="max-width: 240px; border-radius: 12px; margin: 8px 8px 8px 0;" />`
+      ).join("")
     : "";
 
   try {

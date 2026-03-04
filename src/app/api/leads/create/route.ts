@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         city: lead.city,
         zip: lead.zip,
         description: lead.description,
-        photoUrl: lead.photos[0]?.url?.startsWith("data:") ? null : (lead.photos[0]?.url || null),
+        photos: lead.photos.map(p => p.url).filter(Boolean),
       });
     }
 
