@@ -6,7 +6,7 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { LeadPhotoInput, LeadPhotoInputRef } from "@/components/LeadPhotoInput";
 import { JOB_TYPES } from "@/lib/jobTypes";
 
-const MIN_PRICE = 20;
+const MIN_PRICE = 1;
 const MAX_IMAGE_SIZE = 800; // Max width/height in pixels
 const IMAGE_QUALITY = 0.7; // JPEG quality (0-1)
 

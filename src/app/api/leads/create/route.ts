@@ -9,7 +9,7 @@ import { sendPushToUserIds } from "@/lib/push";
 import { sanitizeInput } from "@/lib/sanitize";
 import { logAudit } from "@/lib/audit";
 
-const MIN_PRICE = 20;
+const MIN_PRICE = 1;
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
