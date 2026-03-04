@@ -165,6 +165,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    console.log("[Lead Create] Found contractors with notifyNewLeads:", matchingContractors.length);
+    console.log("[Lead Create] Contractors:", JSON.stringify(matchingContractors));
+
     const recipients = matchingContractors
       .filter((contractor) => {
         const preferences = Array.isArray(contractor.notifyJobTypes)
@@ -176,7 +179,10 @@ export async function POST(request: NextRequest) {
       .map((contractor) => contractor.email)
       .filter(Boolean);
 
+    console.log("[Lead Create] Email recipients after filtering:", recipients);
+
     if (recipients.length > 0) {
+      console.log("[Lead Create] Calling sendNewLeadEmail...");
       await sendNewLeadEmail({
         to: recipients,
         loginUrl: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/login`,
