@@ -33,7 +33,7 @@ model User {
   notifyJobTypes         Json?
   notifyUnlockApproved   Boolean             @default(true)
   notifyMarketing        Boolean             @default(false)
-  notifySms              Boolean             @default(false)
+  notifySms              Boolean             @default(true)
   failedLoginAttempts    Int                 @default(0)
   lockedUntil            DateTime?
   createdAt              DateTime            @default(now())
