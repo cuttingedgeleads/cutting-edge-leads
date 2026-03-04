@@ -229,10 +229,7 @@ export async function POST(request: NextRequest) {
         role: "CONTRACTOR",
         notifyNewLeads: true,
         notifySms: true,
-        AND: [
-          { phone: { not: null } },
-          { phone: { not: "" } },
-        ],
+        phone: { not: "" },
       },
       select: {
         phone: true,
