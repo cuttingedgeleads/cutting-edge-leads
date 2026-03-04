@@ -38,10 +38,12 @@ export async function createPayPalOrder({
   leadId,
   amount,
   description,
+  vault,
 }: {
   leadId: string;
   amount: string;
   description: string;
+  vault?: boolean;
 }) {
   const accessToken = await getPayPalAccessToken();
   const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
@@ -62,6 +64,19 @@ export async function createPayPalOrder({
           },
         },
       ],
+      ...(vault
+        ? {
+            payment_source: {
+              card: {
+                attributes: {
+                  vault: {
+                    store_in_vault: "ON_SUCCESS",
+                  },
+                },
+              },
+            },
+          }
+        : {}),
     }),
   });
 

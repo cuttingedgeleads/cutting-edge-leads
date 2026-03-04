@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const leadId = String(body.leadId || "");
+    const vault = Boolean(body.vault);
     if (!leadId) {
       return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
     }
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       leadId,
       amount: price.toFixed(2),
       description: `${lead.jobType} lead unlock`,
+      vault,
     });
 
     console.log("PayPal order created", { orderId: order?.id });

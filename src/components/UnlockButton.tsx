@@ -18,6 +18,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
   const [showCheckout, setShowCheckout] = useState(false);
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [saveCard, setSaveCard] = useState(false);
   const router = useRouter();
 
   const createOrder = async () => {
@@ -28,7 +29,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
       const response = await fetch("/api/paypal/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId }),
+        body: JSON.stringify({ leadId, vault: saveCard }),
       });
 
       const data = await response.json();
@@ -97,8 +98,8 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
       </button>
 
       {showCheckout && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto overscroll-contain touch-pan-y">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto overscroll-contain touch-pan-y">
             <div className="space-y-1">
               <h3 className="text-lg font-semibold">Unlock this lead</h3>
               <p className="text-sm text-slate-600">
@@ -117,6 +118,15 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   <span className="font-medium">Price:</span> ${price}
                 </p>
               </div>
+              <label className="flex items-start gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={saveCard}
+                  onChange={(event) => setSaveCard(event.target.checked)}
+                />
+                <span>Save my card with PayPal for faster checkout next time.</span>
+              </label>
               <p className="text-xs text-slate-500">
                 Pay with PayPal, Venmo, or Apple Pay (where available).
               </p>
@@ -128,7 +138,8 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   clientId: paypalClientId,
                   currency: "USD",
                   intent: "capture",
-                  enableFunding: "venmo",
+                  vault: true,
+                  enableFunding: "venmo,applepay",
                   disableFunding: "paylater,credit",
                   components: "buttons",
                 }}
