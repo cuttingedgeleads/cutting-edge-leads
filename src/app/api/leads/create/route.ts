@@ -258,7 +258,7 @@ Job: ${lead.jobType}
 Location: ${lead.city}, ${lead.state} ${lead.zip}
 Price: $${lead.price}
 
-Log in to view: cuttingedgeautodetaling.com/login`;
+Log in to view: cuttingedgeautodetaling.com`;
 
     await Promise.all(
       smsRecipients.map((phoneNumber) =>
