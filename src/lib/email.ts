@@ -1,6 +1,8 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const enabled = process.env.EMAIL_ENABLED === "true";
+const resend = process.env.RESEND_API_KEY
+  ? new Resend(process.env.RESEND_API_KEY)
+  : null;
 
 export async function sendNewLeadEmail(options: {
   to: string[];
@@ -11,24 +13,14 @@ export async function sendNewLeadEmail(options: {
   description: string;
   photoUrl?: string | null;
 }) {
-  if (!enabled) return;
-
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  if (!resend) return;
 
   const photoMarkup = options.photoUrl
     ? `<img src="${options.photoUrl}" alt="Lead photo" style="max-width: 240px; border-radius: 12px;" />`
     : "";
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM || "cuttingedgechatbot@gmail.com",
+  await resend.emails.send({
+    from: "Cutting Edge Leads <onboarding@resend.dev>",
     to: options.to,
     subject: `New Lead: ${options.jobType} in ${options.city}`,
     html: `
