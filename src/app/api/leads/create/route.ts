@@ -252,12 +252,19 @@ export async function POST(request: NextRequest) {
 
     console.log("[Lead Create] SMS recipients after filtering:", smsRecipients);
 
+    const smsMessage = `Cutting Edge Leads
+
+Job: ${lead.jobType}
+Customer: ${lead.name}
+Phone: ${lead.phone}
+${lead.email ? `Email: ${lead.email}\n` : ""}Address: ${lead.address}, ${lead.city}, ${lead.state} ${lead.zip}
+Price: $${lead.price}
+
+Log in to view: ${loginUrl}`;
+
     await Promise.all(
       smsRecipients.map((phoneNumber) =>
-        sendSms(
-          phoneNumber,
-          `New ${lead.jobType} lead in ${lead.city}! Log in to view: ${loginUrl}`
-        )
+        sendSms(phoneNumber, smsMessage)
       )
     );
 
