@@ -134,27 +134,15 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
 
       {isOpen ? (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6 touch-none ${
-            isZoomed ? "overflow-visible" : "overflow-hidden"
-          }`}
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/80 px-4 py-6 touch-none"
           onClick={() => setIsOpen(false)}
         >
           <div
-            className={`relative flex items-center justify-center ${
-              isZoomed
-                ? "h-screen w-screen max-w-none max-h-none overflow-visible"
-                : "w-full max-w-[90vw] max-h-[85vh]"
-            }`}
+            className="relative flex w-full max-w-[90vw] max-h-[85vh] items-center justify-center"
             onClick={(event) => event.stopPropagation()}
           >
-            <div
-              className={`flex h-full w-full items-center justify-center bg-black/40 ${
-                isZoomed
-                  ? "overflow-visible rounded-none"
-                  : "aspect-[3/4] overflow-hidden rounded-xl"
-              }`}
-            >
-              <div className={`h-full w-full ${isZoomed ? "overflow-visible" : "overflow-hidden"}`}>
+            <div className="flex h-full w-full items-center justify-center bg-black/40 aspect-[3/4] overflow-hidden rounded-xl">
+              <div className="h-full w-full overflow-hidden">
                 <TransformWrapper
                   ref={transformRef}
                   minScale={1}
@@ -166,13 +154,13 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
                   onTransformed={({ state }) => setIsZoomed(state.scale > 1)}
                 >
                   <TransformComponent
-                    wrapperClass={`h-full w-full ${isZoomed ? "overflow-visible" : "overflow-hidden"}`}
-                    contentClass={`h-full w-full ${isZoomed ? "overflow-visible" : "overflow-hidden"}`}
+                    wrapperClass="h-full w-full overflow-hidden"
+                    contentClass="h-full w-full overflow-hidden"
                   >
                     <img
                       src={activePhoto.url}
                       alt={activePhoto.alt || "Lead photo"}
-                      className={`h-full w-full object-contain ${isZoomed ? "relative z-50" : ""}`}
+                      className="h-full w-full object-contain"
                       style={{ touchAction: "none" }}
                     />
                   </TransformComponent>
