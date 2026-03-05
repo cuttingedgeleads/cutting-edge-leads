@@ -1,6 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ReactZoomPanPinchRef,
+  TransformComponent,
+  TransformWrapper,
+} from "react-zoom-pan-pinch";
 
 export type PhotoLightboxItem = {
   id?: string;
@@ -17,6 +22,7 @@ type PhotoLightboxProps = {
 export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLightboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
 
   const orderedPhotos = useMemo(() => {
     const getLabel = (url: string) => {
@@ -86,6 +92,11 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, showNext, showPrev]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    transformRef.current?.resetTransform();
+  }, [activeIndex, isOpen]);
+
   if (!orderedPhotos || orderedPhotos.length === 0) return null;
 
   const activePhoto = orderedPhotos[activeIndex];
@@ -123,12 +134,27 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex h-full w-full aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-black/40">
-              <img
-                src={activePhoto.url}
-                alt={activePhoto.alt || "Lead photo"}
-                className="h-full w-full object-contain"
-                style={{ touchAction: "pinch-zoom" }}
-              />
+              <TransformWrapper
+                ref={transformRef}
+                minScale={1}
+                maxScale={4}
+                doubleClick={{ mode: "zoomIn", step: 0.5 }}
+                pinch={{ step: 5 }}
+                panning={{ disabled: true }}
+                wheel={{ disabled: true }}
+              >
+                <TransformComponent
+                  wrapperClass="h-full w-full"
+                  contentClass="h-full w-full"
+                >
+                  <img
+                    src={activePhoto.url}
+                    alt={activePhoto.alt || "Lead photo"}
+                    className="h-full w-full object-contain"
+                    style={{ touchAction: "none" }}
+                  />
+                </TransformComponent>
+              </TransformWrapper>
             </div>
 
             <button
