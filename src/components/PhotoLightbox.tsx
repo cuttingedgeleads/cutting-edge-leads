@@ -22,6 +22,7 @@ type PhotoLightboxProps = {
 export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLightboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isZoomed, setIsZoomed] = useState(false);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
 
   const orderedPhotos = useMemo(() => {
@@ -95,6 +96,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
   useEffect(() => {
     if (!isOpen) return;
     transformRef.current?.resetTransform();
+    setIsZoomed(false);
   }, [activeIndex, isOpen]);
 
   if (!orderedPhotos || orderedPhotos.length === 0) return null;
@@ -133,19 +135,24 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
             className="relative flex w-full max-w-[90vw] max-h-[85vh] items-center justify-center"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex h-full w-full aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-black/40">
+            <div
+              className={`flex h-full w-full aspect-[3/4] items-center justify-center rounded-xl bg-black/40 ${
+                isZoomed ? "overflow-visible" : "overflow-hidden"
+              }`}
+            >
               <TransformWrapper
                 ref={transformRef}
                 minScale={1}
                 maxScale={4}
                 doubleClick={{ mode: "zoomIn", step: 0.5 }}
                 pinch={{ step: 5 }}
-                panning={{ disabled: true }}
+                panning={{ disabled: !isZoomed }}
                 wheel={{ disabled: true }}
+                onTransformed={({ state }) => setIsZoomed(state.scale > 1)}
               >
                 <TransformComponent
-                  wrapperClass="h-full w-full"
-                  contentClass="h-full w-full"
+                  wrapperClass={`h-full w-full ${isZoomed ? "overflow-visible" : "overflow-hidden"}`}
+                  contentClass={`h-full w-full ${isZoomed ? "overflow-visible" : "overflow-hidden"}`}
                 >
                   <img
                     src={activePhoto.url}
