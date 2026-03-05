@@ -115,10 +115,11 @@ export async function fetchLeadImages(address: LeadAddress) {
 
   const locationPreviewUrl = await buildLocationPreviewUrl(addressString);
 
-  const aerialSize = 560;
+  const aerialSize = 500;
+  const aerialZoom = 20;
   const aerialUrl =
     `https://maps.googleapis.com/maps/api/staticmap?center=${encoded}` +
-    `&zoom=21&size=${aerialSize}x${aerialSize}&maptype=satellite&key=${GOOGLE_MAPS_API_KEY}`;
+    `&zoom=${aerialZoom}&size=${aerialSize}x${aerialSize}&maptype=satellite&key=${GOOGLE_MAPS_API_KEY}`;
 
   const streetUrl =
     `https://maps.googleapis.com/maps/api/streetview?location=${encoded}` +
