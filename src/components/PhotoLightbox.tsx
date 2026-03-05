@@ -23,7 +23,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
-  const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const transformRef = useRef<ReactZoomPanPinchRef>(null);
 
   const orderedPhotos = useMemo(() => {
     const getLabel = (url: string) => {
@@ -64,14 +64,16 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
   }, []);
 
   const showNext = useCallback(() => {
-    resetZoom();
+    transformRef.current?.resetTransform();
+    setIsZoomed(false);
     setActiveIndex((current) => (current + 1) % orderedPhotos.length);
-  }, [orderedPhotos.length, resetZoom]);
+  }, [orderedPhotos.length]);
 
   const showPrev = useCallback(() => {
-    resetZoom();
+    transformRef.current?.resetTransform();
+    setIsZoomed(false);
     setActiveIndex((current) => (current - 1 + orderedPhotos.length) % orderedPhotos.length);
-  }, [orderedPhotos.length, resetZoom]);
+  }, [orderedPhotos.length]);
 
   const openAt = useCallback((index: number) => {
     setActiveIndex(index);
