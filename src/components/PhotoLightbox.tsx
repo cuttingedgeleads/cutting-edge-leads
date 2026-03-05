@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 
 export type PhotoLightboxItem = {
   id?: string;
@@ -17,17 +17,49 @@ type PhotoLightboxProps = {
 export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLightboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  const orderedPhotos = useMemo(() => {
+    const getLabel = (url: string) => {
+      if (!url.startsWith("data:")) return null;
+      const match = url.match(/^data:[^;]+;name=([^;]+);/i);
+      return match?.[1] || null;
+    };
+
+    const getPriority = (photo: PhotoLightboxItem) => {
+      if (!photo.url.startsWith("data:")) return 3;
+      const label = getLabel(photo.url);
+      switch (label) {
+        case "street":
+          return 0;
+        case "aerial":
+          return 1;
+        case "map":
+        case "location-preview":
+          return 2;
+        case "manual":
+          return 3;
+        default:
+          return 4;
+      }
+    };
+
+    return [...(photos || [])].sort((a, b) => {
+      const priority = getPriority(a) - getPriority(b);
+      if (priority !== 0) return priority;
+      return (a.id || a.url).localeCompare(b.id || b.url);
+    });
+  }, [photos]);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
   const previousBodyOverflow = useRef<string | null>(null);
 
   const showNext = useCallback(() => {
-    setActiveIndex((current) => (current + 1) % photos.length);
-  }, [photos.length]);
+    setActiveIndex((current) => (current + 1) % orderedPhotos.length);
+  }, [orderedPhotos.length]);
 
   const showPrev = useCallback(() => {
-    setActiveIndex((current) => (current - 1 + photos.length) % photos.length);
-  }, [photos.length]);
+    setActiveIndex((current) => (current - 1 + orderedPhotos.length) % orderedPhotos.length);
+  }, [orderedPhotos.length]);
 
   const openAt = useCallback((index: number) => {
     setActiveIndex(index);
@@ -56,7 +88,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, showNext, showPrev]);
 
-  if (!photos || photos.length === 0) return null;
+  if (!orderedPhotos || orderedPhotos.length === 0) return null;
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = event.touches[0]?.clientX ?? null;
@@ -81,12 +113,12 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
     }
   };
 
-  const activePhoto = photos[activeIndex];
+  const activePhoto = orderedPhotos[activeIndex];
 
   return (
     <>
       <div className={className || "flex flex-wrap gap-2"}>
-        {photos.map((photo, index) => (
+        {orderedPhotos.map((photo, index) => (
           <button
             key={photo.id ?? `${photo.url}-${index}`}
             type="button"
@@ -134,7 +166,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
               ✕
             </button>
 
-            {photos.length > 1 ? (
+            {orderedPhotos.length > 1 ? (
               <>
                 <button
                   type="button"
@@ -153,7 +185,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
                   ›
                 </button>
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-white">
-                  {activeIndex + 1} / {photos.length}
+                  {activeIndex + 1} / {orderedPhotos.length}
                 </div>
               </>
             ) : null}

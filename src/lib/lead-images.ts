@@ -50,7 +50,7 @@ const addDisclaimerToImage = async (buffer: Buffer) => {
     .toBuffer();
 };
 
-const fetchImageAsDataUrl = async (url: string) => {
+const fetchImageAsDataUrl = async (url: string, label?: string) => {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Image request failed with status ${response.status}`);
@@ -61,7 +61,8 @@ const fetchImageAsDataUrl = async (url: string) => {
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   const watermarkedBuffer = await addDisclaimerToImage(buffer);
-  return `data:${contentType};base64,${watermarkedBuffer.toString("base64")}`;
+  const namePart = label ? `;name=${label}` : "";
+  return `data:${contentType}${namePart};base64,${watermarkedBuffer.toString("base64")}`;
 };
 
 const geocodeAddress = async (addressString: string) => {
@@ -123,12 +124,14 @@ export async function fetchLeadImages(address: LeadAddress) {
     `&size=640x480&key=${GOOGLE_MAPS_API_KEY}&return_error_code=true`;
 
   const requests = [
-    { label: "location-preview", url: locationPreviewUrl },
-    { label: "aerial", url: aerialUrl },
     { label: "street", url: streetUrl },
+    { label: "aerial", url: aerialUrl },
+    { label: "map", url: locationPreviewUrl },
   ].filter((request): request is { label: string; url: string } => Boolean(request.url));
 
-  const results = await Promise.allSettled(requests.map((request) => fetchImageAsDataUrl(request.url)));
+  const results = await Promise.allSettled(
+    requests.map((request) => fetchImageAsDataUrl(request.url, request.label))
+  );
 
   const images: string[] = [];
   results.forEach((result, index) => {

@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
         }
         
         const mimeType = file.type || "image/jpeg";
-        return `data:${mimeType};base64,${buffer.toString("base64")}`;
+        return `data:${mimeType};name=manual;base64,${buffer.toString("base64")}`;
       })
     );
 
