@@ -58,13 +58,20 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
   }, [photos]);
   const previousBodyOverflow = useRef<string | null>(null);
 
+  const resetZoom = useCallback(() => {
+    transformRef.current?.resetTransform();
+    setIsZoomed(false);
+  }, []);
+
   const showNext = useCallback(() => {
+    resetZoom();
     setActiveIndex((current) => (current + 1) % orderedPhotos.length);
-  }, [orderedPhotos.length]);
+  }, [orderedPhotos.length, resetZoom]);
 
   const showPrev = useCallback(() => {
+    resetZoom();
     setActiveIndex((current) => (current - 1 + orderedPhotos.length) % orderedPhotos.length);
-  }, [orderedPhotos.length]);
+  }, [orderedPhotos.length, resetZoom]);
 
   const openAt = useCallback((index: number) => {
     setActiveIndex(index);
@@ -95,9 +102,8 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
 
   useEffect(() => {
     if (!isOpen) return;
-    transformRef.current?.resetTransform();
-    setIsZoomed(false);
-  }, [activeIndex, isOpen]);
+    resetZoom();
+  }, [activeIndex, isOpen, resetZoom]);
 
   if (!orderedPhotos || orderedPhotos.length === 0) return null;
 
