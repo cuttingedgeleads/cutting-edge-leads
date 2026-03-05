@@ -9,6 +9,7 @@ import { sendPushToUserIds } from "@/lib/push";
 import { sendSms } from "@/lib/sms";
 import { sanitizeInput } from "@/lib/sanitize";
 import { logAudit } from "@/lib/audit";
+import { fetchLeadImages } from "@/lib/lead-images";
 
 const MIN_PRICE = 1;
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
@@ -128,6 +129,9 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    const autoImages = await fetchLeadImages({ address, city, state, zip });
+    const allPhotos = [...autoImages, ...photos].filter(Boolean);
+
     const lead = await prisma.lead.create({
       data: {
         name,
@@ -142,7 +146,7 @@ export async function POST(request: NextRequest) {
         price,
         createdAt: new Date(),
         photos: {
-          create: photos.map((url) => ({ url })),
+          create: allPhotos.map((url) => ({ url })),
         },
       },
       include: { photos: true },
