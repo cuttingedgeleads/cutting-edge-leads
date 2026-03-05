@@ -142,7 +142,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex h-full w-full items-center justify-center bg-black/40 aspect-[3/4] overflow-hidden rounded-xl">
-              <div className="h-full w-full overflow-hidden">
+              <div className="flex h-full w-full items-center justify-center overflow-hidden">
                 <TransformWrapper
                   ref={transformRef}
                   minScale={1}
@@ -154,13 +154,13 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
                   onTransformed={({ state }) => setIsZoomed(state.scale > 1)}
                 >
                   <TransformComponent
-                    wrapperClass="h-full w-full overflow-hidden"
-                    contentClass="h-full w-full overflow-hidden"
+                    wrapperClass="flex h-full w-full items-center justify-center overflow-hidden"
+                    contentClass="flex h-full w-full items-center justify-center overflow-hidden"
                   >
                     <img
                       src={activePhoto.url}
                       alt={activePhoto.alt || "Lead photo"}
-                      className="h-full w-full object-contain"
+                      className="max-h-full max-w-full object-contain"
                       style={{ touchAction: "none" }}
                     />
                   </TransformComponent>
