@@ -118,7 +118,7 @@ export async function fetchLeadImages(address: LeadAddress) {
   const aerialSize = 560;
   const aerialUrl =
     `https://maps.googleapis.com/maps/api/staticmap?center=${encoded}` +
-    `&zoom=20&size=${aerialSize}x${aerialSize}&maptype=satellite&key=${GOOGLE_MAPS_API_KEY}`;
+    `&zoom=19&size=${aerialSize}x${aerialSize}&maptype=satellite&key=${GOOGLE_MAPS_API_KEY}`;
 
   const streetUrl =
     `https://maps.googleapis.com/maps/api/streetview?location=${encoded}` +
