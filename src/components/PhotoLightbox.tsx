@@ -127,6 +127,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
                 src={activePhoto.url}
                 alt={activePhoto.alt || "Lead photo"}
                 className="h-full w-full object-contain"
+                style={{ touchAction: "pinch-zoom" }}
               />
             </div>
 
