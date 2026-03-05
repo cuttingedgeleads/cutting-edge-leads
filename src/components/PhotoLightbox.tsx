@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type PhotoLightboxItem = {
   id?: string;
@@ -49,8 +49,6 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
       return (a.id || a.url).localeCompare(b.id || b.url);
     });
   }, [photos]);
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
   const previousBodyOverflow = useRef<string | null>(null);
 
   const showNext = useCallback(() => {
@@ -90,29 +88,6 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
 
   if (!orderedPhotos || orderedPhotos.length === 0) return null;
 
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-    touchStartY.current = event.touches[0]?.clientY ?? null;
-  };
-
-  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
-    const endY = event.changedTouches[0]?.clientY ?? touchStartY.current;
-    const deltaX = endX - touchStartX.current;
-    const deltaY = endY - touchStartY.current;
-    touchStartX.current = null;
-    touchStartY.current = null;
-
-    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      if (deltaX > 0) {
-        showPrev();
-      } else {
-        showNext();
-      }
-    }
-  };
-
   const activePhoto = orderedPhotos[activeIndex];
 
   return (
@@ -140,14 +115,12 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
 
       {isOpen ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4 py-6 touch-none"
           onClick={() => setIsOpen(false)}
         >
           <div
             className="relative flex w-full max-w-[90vw] max-h-[85vh] items-center justify-center"
             onClick={(event) => event.stopPropagation()}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
           >
             <div className="flex h-full w-full aspect-[3/4] items-center justify-center overflow-hidden rounded-xl bg-black/40">
               <img
