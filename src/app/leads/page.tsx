@@ -79,10 +79,7 @@ export default async function LeadsPage({
   cutoff.setHours(cutoff.getHours() - 48);
 
   const cityClause = allowedCities.length
-    ? Prisma.sql`AND (${Prisma.join(
-        allowedCities.map((city) => Prisma.sql`LOWER(l."city") = ${city}`),
-        Prisma.sql` OR `
-      )})`
+    ? Prisma.sql`AND LOWER(l."city") IN (${Prisma.join(allowedCities)})`
     : Prisma.empty;
 
   const availableCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`

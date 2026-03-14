@@ -71,7 +71,7 @@ export default async function ArchivedLeadsPage({
     : [];
 
   const leadMap = new Map(leads.map((lead) => [lead.id, lead]));
-  const pagedLeads = leadIds.map((id) => leadMap.get(id)).filter(Boolean);
+  const pagedLeads = leadIds.map((id) => leadMap.get(id)).filter((l): l is typeof leads[number] => !!l);
 
   return (
     <div className="min-h-screen">
