@@ -57,7 +57,7 @@ function makeRequest(options, data = null) {
 async function addDomain() {
   console.log('Step 1: Adding domain to Resend...');
   
-  const data = JSON.stringify({ name: 'cuttingedgeautodetaling.com' });
+  const data = JSON.stringify({ name: 'cuttingedgeleads.net' });
   
   const options = {
     hostname: 'api.resend.com',
@@ -143,7 +143,7 @@ async function main() {
   let domainData = null;
   
   if (domains && domains.data) {
-    const existing = domains.data.find(d => d.name === 'cuttingedgeautodetaling.com');
+    const existing = domains.data.find(d => d.name === 'cuttingedgeleads.net');
     if (existing) {
       console.log('\n✓ Domain already exists in Resend');
       domainData = existing;

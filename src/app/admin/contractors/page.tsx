@@ -133,6 +133,7 @@ export default async function ContractorsPage() {
                 <p className="font-medium">{contractor.name}</p>
                 <p className="text-sm text-slate-600">{contractor.businessName || "Business name pending"}</p>
                 <p className="text-sm text-slate-600">{contractor.email}</p>
+                <p className="text-sm text-slate-600">{contractor.phone || "Phone pending"}</p>
                 <p className="text-xs text-slate-500">
                   Cities: {contractor.serviceCities || "None"}
                 </p>

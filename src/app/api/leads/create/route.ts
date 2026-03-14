@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[Lead Create] Email recipients after filtering:", recipients);
 
-    const loginUrl = `${process.env.NEXTAUTH_URL || "https://www.cuttingedgeautodetaling.com"}/login`;
+    const loginUrl = `${process.env.NEXTAUTH_URL || "https://www.cuttingedgeleads.net"}/login`;
 
     if (recipients.length > 0) {
       console.log("[Lead Create] Calling sendNewLeadEmail...");
@@ -268,7 +268,7 @@ Job: ${lead.jobType}
 Location: ${lead.city}, ${lead.state} ${lead.zip}
 Price: $${lead.price}
 
-Log in to view: cuttingedgeautodetaling.com`;
+Log in to view: cuttingedgeleads.net`;
 
     await Promise.all(
       smsRecipients.map((phoneNumber) =>
