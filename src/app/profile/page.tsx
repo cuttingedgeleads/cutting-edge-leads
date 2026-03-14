@@ -183,6 +183,40 @@ async function updateNotifySms(formData: FormData) {
   redirect("/profile?success=notifications");
 }
 
+async function updateEmailNotifications(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const emailNotifications = formData.get("emailNotifications") === "on";
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { emailNotifications },
+  });
+
+  redirect("/profile?success=notifications");
+}
+
+async function updatePushNotifications(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "CONTRACTOR") redirect("/");
+
+  const pushNotifications = formData.get("pushNotifications") === "on";
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { pushNotifications },
+  });
+
+  redirect("/profile?success=notifications");
+}
+
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -199,6 +233,8 @@ export default async function ProfilePage() {
       timezone: true,
       notifyJobTypes: true,
       notifySms: true,
+      emailNotifications: true,
+      pushNotifications: true,
     },
   });
 
@@ -350,8 +386,26 @@ export default async function ProfilePage() {
           <div>
             <h3 className="text-lg font-semibold">Notification settings</h3>
             <p className="text-sm text-slate-600">Choose how we keep you updated.</p>
+            <p className="text-xs text-slate-500 mt-2">
+              You&apos;ll always receive an email with full lead details when you purchase a lead,
+              regardless of these settings.
+            </p>
           </div>
           <div className="grid gap-3">
+            <EditableCheckboxField
+              label="Email notifications"
+              name="emailNotifications"
+              value={user?.emailNotifications}
+              action={updateEmailNotifications}
+              description="Get email alerts when new leads are available."
+            />
+            <EditableCheckboxField
+              label="Push notifications"
+              name="pushNotifications"
+              value={user?.pushNotifications}
+              action={updatePushNotifications}
+              description="Receive push alerts when new leads are available."
+            />
             <EditableCheckboxField
               label="SMS notifications"
               name="notifySms"

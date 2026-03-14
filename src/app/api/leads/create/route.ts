@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
     const city = rawCity ? toTitleCase(rawCity) : "";
     const state = normalizeState(rawState);
     const price = Number(formData.get("price") || 0);
+    const unlockLimitValue = Number(formData.get("unlockLimit") || 1);
+    const unlockLimit = [1, 2, 3].includes(unlockLimitValue) ? unlockLimitValue : 1;
     const photoFiles = formData.getAll("photos").filter((file): file is File => {
       return file instanceof File && file.size > 0;
     });
@@ -97,7 +99,8 @@ export async function POST(request: NextRequest) {
       !city ||
       !state ||
       !zip ||
-      price < MIN_PRICE
+      price < MIN_PRICE ||
+      ![1, 2, 3].includes(unlockLimit)
     ) {
       return NextResponse.json({ error: "Please fill in all fields correctly" }, { status: 400 });
     }
@@ -144,6 +147,7 @@ export async function POST(request: NextRequest) {
         state,
         zip,
         price,
+        unlockLimit,
         createdAt: new Date(),
         photos: {
           create: allPhotos.map((url) => ({ url })),
@@ -163,6 +167,7 @@ export async function POST(request: NextRequest) {
       where: {
         role: "CONTRACTOR",
         notifyNewLeads: true,
+        emailNotifications: true,
       },
       select: {
         email: true,
@@ -205,6 +210,7 @@ export async function POST(request: NextRequest) {
       where: {
         role: "CONTRACTOR",
         notifyNewLeads: true,
+        pushNotifications: true,
       },
       select: {
         id: true,

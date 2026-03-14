@@ -34,6 +34,8 @@ model User {
   notifyUnlockApproved   Boolean             @default(true)
   notifyMarketing        Boolean             @default(false)
   notifySms              Boolean             @default(true)
+  emailNotifications     Boolean             @default(true) @map("email_notifications")
+  pushNotifications      Boolean             @default(true) @map("push_notifications")
   failedLoginAttempts    Int                 @default(0)
   lockedUntil            DateTime?
   createdAt              DateTime            @default(now())
@@ -77,6 +79,7 @@ model Lead {
   state       String
   zip         String
   price       Int
+  unlockLimit Int                  @default(1)
   createdAt   DateTime             @default(now())
   photos      LeadPhoto[]
   unlocks     LeadUnlockRequest[]  @relation("LeadUnlocks")
