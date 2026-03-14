@@ -33,8 +33,28 @@ export default async function PurchaseHistoryPage() {
 
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, businessName: true },
+    select: { name: true, businessName: true, serviceCities: true },
   });
+
+  const allowedCities = (contractor?.serviceCities || "")
+    .split(",")
+    .map((city) => city.trim().toLowerCase())
+    .filter(Boolean);
+
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - 24);
+
+  const availableLeads = await prisma.lead.findMany({
+    where: { createdAt: { gte: cutoff } },
+    select: { city: true, unlocks: { select: { status: true } } },
+  });
+
+  const availableLeadCount = availableLeads.filter((lead) => {
+    const cityMatch =
+      allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
+    if (!cityMatch) return false;
+    return lead.unlocks.every((unlock) => unlock.status !== "APPROVED");
+  }).length;
 
   return (
     <div className="min-h-screen">
@@ -42,6 +62,7 @@ export default async function PurchaseHistoryPage() {
         name={contractor?.name ?? session.user.name}
         role={session.user.role}
         businessName={contractor?.businessName}
+        availableLeadCount={availableLeadCount}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header className="space-y-2">

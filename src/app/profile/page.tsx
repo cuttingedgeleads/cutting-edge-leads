@@ -304,12 +304,33 @@ export default async function ProfilePage() {
     : null;
   const selectedJobTypes = storedJobTypes ?? [...JOB_TYPES];
 
+  const allowedCities = (user?.serviceCities || "")
+    .split(",")
+    .map((city) => city.trim().toLowerCase())
+    .filter(Boolean);
+
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - 24);
+
+  const availableLeads = await prisma.lead.findMany({
+    where: { createdAt: { gte: cutoff } },
+    select: { city: true, unlocks: { select: { status: true } } },
+  });
+
+  const availableLeadCount = availableLeads.filter((lead) => {
+    const cityMatch =
+      allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
+    if (!cityMatch) return false;
+    return lead.unlocks.every((unlock) => unlock.status !== "APPROVED");
+  }).length;
+
   return (
     <div className="min-h-screen">
       <NavBar
         name={user?.name ?? session.user.name}
         role={session.user.role}
         businessName={user?.businessName}
+        availableLeadCount={availableLeadCount}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
         <section className="bg-white rounded-2xl shadow p-6 space-y-5">

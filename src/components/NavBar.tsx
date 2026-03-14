@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { NotificationBadge } from "@/components/NotificationBadge";
 import { IosInstallBanner } from "@/components/IosInstallBanner";
 
 const contractorLinks = [
@@ -22,10 +21,12 @@ export function NavBar({
   name,
   role,
   businessName,
+  availableLeadCount = 0,
 }: {
   name?: string | null;
   role?: string;
   businessName?: string | null;
+  availableLeadCount?: number;
 }) {
   const pathname = usePathname();
   const normalizedName = name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
@@ -55,7 +56,6 @@ export function NavBar({
             ) : null}
           </div>
           <div className="flex items-center gap-3">
-            <NotificationBadge />
             {role === "CONTRACTOR" ? (
               <Link
                 href="/profile"
@@ -84,13 +84,20 @@ export function NavBar({
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
+                    className={`relative rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
                       isActive
                         ? "bg-sky-100 text-sky-900 border-sky-200"
                         : "text-slate-700 hover:border-slate-300 hover:text-slate-900"
                     }`}
                   >
-                    {link.label}
+                    <span className="relative inline-flex items-center">
+                      {link.label}
+                      {link.href === "/leads" && availableLeadCount > 0 ? (
+                        <span className="absolute -right-3 -top-2 inline-flex min-w-[18px] items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold text-white">
+                          {availableLeadCount}
+                        </span>
+                      ) : null}
+                    </span>
                   </Link>
                 );
               })}

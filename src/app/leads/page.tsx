@@ -86,12 +86,17 @@ export default async function LeadsPage() {
       return b.createdAt.getTime() - a.createdAt.getTime();
     });
 
+  const availableLeadCount = visibleLeads.filter((lead) =>
+    lead.unlocks.every((unlock) => unlock.status !== "APPROVED")
+  ).length;
+
   return (
     <div className="min-h-screen">
       <NavBar
         name={contractor?.name ?? session.user.name}
         role={session.user.role}
         businessName={contractor?.businessName}
+        availableLeadCount={availableLeadCount}
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header className="space-y-2">
