@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { capturePayPalOrder } from "@/lib/paypal";
+import { sendLeadUnlockedEmail } from "@/lib/email";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
-  expiresAt.setHours(expiresAt.getHours() + 24);
+  expiresAt.setHours(expiresAt.getHours() + 48);
   return new Date() > expiresAt;
 }
 
@@ -36,7 +37,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Lead expired" }, { status: 400 });
     }
 
-    if (lead.unlocks.length >= 2) {
+    const unlockLimit = lead.unlockLimit ?? 1;
+    if (lead.unlocks.length >= unlockLimit) {
       return NextResponse.json({ error: "Lead sold out" }, { status: 400 });
     }
 
@@ -77,6 +79,29 @@ export async function POST(request: NextRequest) {
         approvedAt: new Date(),
       },
     });
+
+    const contractor = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true, name: true },
+    });
+
+    if (contractor?.email) {
+      await sendLeadUnlockedEmail({
+        to: contractor.email,
+        contractorName: contractor.name,
+        leadId: lead.id,
+        leadName: lead.name,
+        leadEmail: lead.email,
+        leadPhone: lead.phone,
+        jobType: lead.jobType,
+        description: lead.description,
+        address: lead.address,
+        city: lead.city,
+        state: lead.state,
+        zip: lead.zip,
+        price: Number.isFinite(lead.price) ? lead.price : 0,
+      });
+    }
 
     return NextResponse.json({ success: true, unlockId: unlock.id });
   } catch (error) {
