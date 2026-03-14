@@ -129,27 +129,6 @@ async function updatePhone(formData: FormData) {
   redirect("/profile?success=business_profile");
 }
 
-async function updateServiceCities(formData: FormData) {
-  "use server";
-
-  const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.user.role !== "CONTRACTOR") redirect("/");
-
-  const serviceCities = sanitizeInput(String(formData.get("serviceCities") || ""))
-    .split(",")
-    .map((city) => sanitizeInput(city))
-    .filter(Boolean)
-    .join(",");
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { serviceCities },
-  });
-
-  redirect("/profile?success=business_profile");
-}
-
 async function updateTimezone(formData: FormData) {
   "use server";
 
@@ -165,42 +144,6 @@ async function updateTimezone(formData: FormData) {
   });
 
   redirect("/profile?success=business_profile");
-}
-
-async function updatePreferredContactMethod(formData: FormData) {
-  "use server";
-
-  const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.user.role !== "CONTRACTOR") redirect("/");
-
-  const preferredContactMethod = sanitizeInput(
-    String(formData.get("preferredContactMethod") || "EMAIL")
-  );
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { preferredContactMethod },
-  });
-
-  redirect("/profile?success=business_profile");
-}
-
-async function updateNotifyNewLeads(formData: FormData) {
-  "use server";
-
-  const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.user.role !== "CONTRACTOR") redirect("/");
-
-  const notifyNewLeads = formData.get("notifyNewLeads") === "on";
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { notifyNewLeads },
-  });
-
-  redirect("/profile?success=notifications");
 }
 
 async function updateNotifyJobTypes(formData: FormData) {
@@ -223,23 +166,6 @@ async function updateNotifyJobTypes(formData: FormData) {
   redirect("/profile?success=notifications");
 }
 
-async function updateNotifyUnlockApproved(formData: FormData) {
-  "use server";
-
-  const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.user.role !== "CONTRACTOR") redirect("/");
-
-  const notifyUnlockApproved = formData.get("notifyUnlockApproved") === "on";
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { notifyUnlockApproved },
-  });
-
-  redirect("/profile?success=notifications");
-}
-
 async function updateNotifySms(formData: FormData) {
   "use server";
 
@@ -252,23 +178,6 @@ async function updateNotifySms(formData: FormData) {
   await prisma.user.update({
     where: { id: session.user.id },
     data: { notifySms },
-  });
-
-  redirect("/profile?success=notifications");
-}
-
-async function updateNotifyMarketing(formData: FormData) {
-  "use server";
-
-  const session = await getSession();
-  if (!session) redirect("/login");
-  if (session.user.role !== "CONTRACTOR") redirect("/");
-
-  const notifyMarketing = formData.get("notifyMarketing") === "on";
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { notifyMarketing },
   });
 
   redirect("/profile?success=notifications");
@@ -288,11 +197,7 @@ export default async function ProfilePage() {
       phone: true,
       serviceCities: true,
       timezone: true,
-      preferredContactMethod: true,
-      notifyNewLeads: true,
       notifyJobTypes: true,
-      notifyUnlockApproved: true,
-      notifyMarketing: true,
       notifySms: true,
     },
   });
@@ -405,15 +310,6 @@ export default async function ProfilePage() {
               action={updatePhone}
               placeholder="(555) 555-5555"
             />
-            <div className="sm:col-span-2">
-              <EditableTextField
-                label="Service areas (comma-separated)"
-                name="serviceCities"
-                value={user?.serviceCities}
-                action={updateServiceCities}
-                placeholder="Dallas, Plano, Frisco"
-              />
-            </div>
             <EditableSelectField
               label="Timezone"
               name="timezone"
@@ -424,17 +320,6 @@ export default async function ProfilePage() {
                 { value: "America/New_York", label: "Eastern (America/New_York)" },
                 { value: "America/Denver", label: "Mountain (America/Denver)" },
                 { value: "America/Los_Angeles", label: "Pacific (America/Los_Angeles)" },
-              ]}
-            />
-            <EditableSelectField
-              label="Preferred contact method"
-              name="preferredContactMethod"
-              value={user?.preferredContactMethod || "EMAIL"}
-              action={updatePreferredContactMethod}
-              options={[
-                { value: "EMAIL", label: "Email" },
-                { value: "SMS", label: "SMS" },
-                { value: "PHONE", label: "Phone call" },
               ]}
             />
           </div>
@@ -468,32 +353,11 @@ export default async function ProfilePage() {
           </div>
           <div className="grid gap-3">
             <EditableCheckboxField
-              label="New lead alerts"
-              name="notifyNewLeads"
-              value={user?.notifyNewLeads}
-              action={updateNotifyNewLeads}
-              description="Get notified when new leads are posted."
-            />
-            <EditableCheckboxField
-              label="Unlock approvals"
-              name="notifyUnlockApproved"
-              value={user?.notifyUnlockApproved}
-              action={updateNotifyUnlockApproved}
-              description="Alerts when your lead unlocks are approved."
-            />
-            <EditableCheckboxField
               label="SMS notifications"
               name="notifySms"
               value={user?.notifySms}
               action={updateNotifySms}
               description="Receive text alerts for urgent lead activity."
-            />
-            <EditableCheckboxField
-              label="Product updates"
-              name="notifyMarketing"
-              value={user?.notifyMarketing}
-              action={updateNotifyMarketing}
-              description="Occasional product tips and announcements."
             />
           </div>
           <form action={updateNotifyJobTypes} className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
