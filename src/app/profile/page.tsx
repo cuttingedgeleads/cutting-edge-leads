@@ -348,11 +348,11 @@ export default async function ProfilePage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-700">iOS setup</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+              <li>Open Cutting Edge Leads in Safari and tap Share</li>
               <li>
-                Open Cutting Edge Leads in Safari and tap Share. Scroll down until you see the
-                option &quot;Add to Home Screen.&quot; and select. Launch the app from your home screen,
-                then tap Enable Notifications
+                Scroll down until you see the option &quot;Add to Home Screen&quot; and select
               </li>
+              <li>Launch the app from your home screen, then tap Enable Notifications</li>
             </ol>
             <p className="mt-2 text-xs text-slate-500">Requires iOS 16.4 or newer.</p>
           </div>

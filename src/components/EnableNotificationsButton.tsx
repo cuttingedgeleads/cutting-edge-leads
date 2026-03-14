@@ -91,12 +91,9 @@ export function EnableNotificationsButton() {
               </button>
             </div>
             <ol className="mt-4 space-y-3 text-sm text-slate-600">
-              <li>
-                <strong>Install the app</strong> from Safari: tap Share (□↑) and choose “Add to Home
-                Screen.”
-              </li>
-              <li>Open Cutting Edge Leads from your home screen.</li>
-              <li>Tap <strong>Enable Notifications</strong> and allow alerts.</li>
+              <li>Open Cutting Edge Leads in Safari and tap Share</li>
+              <li>Scroll down until you see the option “Add to Home Screen” and select</li>
+              <li>Launch the app from your home screen, then tap Enable Notifications</li>
             </ol>
             <p className="mt-4 text-xs text-slate-500">Requires iOS 16.4 or newer.</p>
           </div>
