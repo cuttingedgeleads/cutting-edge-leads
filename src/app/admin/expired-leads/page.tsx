@@ -9,7 +9,7 @@ import { Pagination } from "@/components/Pagination";
 
 const PAGE_SIZE = 5;
 
-export default async function ArchivedLeadsPage({
+export default async function ExpiredLeadsPage({
   searchParams,
 }: {
   searchParams: Promise<{ page?: string }>;
@@ -25,37 +25,38 @@ export default async function ArchivedLeadsPage({
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - 48);
 
-  const archivedCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+  const expiredCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
     SELECT COUNT(*)::bigint AS count
-    FROM (
-      SELECT l.id
-      FROM "Lead" l
-      LEFT JOIN "LeadUnlockRequest" u
-        ON u."leadId" = l.id AND u.status = 'APPROVED'
-      GROUP BY l.id, l."unlockLimit", l."createdAt"
-      HAVING l."createdAt" < ${cutoff}
-        OR COUNT(u.id) >= COALESCE(l."unlockLimit", 1)
-    ) AS filtered
+    FROM "Lead" l
+    WHERE l."createdAt" < ${cutoff}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM "LeadUnlockRequest" u
+        WHERE u."leadId" = l.id
+          AND u.status = 'APPROVED'
+      )
   `);
 
-  const archivedCount = Number(archivedCountResult[0]?.count ?? 0);
-  const totalPages = Math.max(1, Math.ceil(archivedCount / PAGE_SIZE));
+  const expiredCount = Number(expiredCountResult[0]?.count ?? 0);
+  const totalPages = Math.max(1, Math.ceil(expiredCount / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
   const skip = (currentPage - 1) * PAGE_SIZE;
 
-  const archivedLeadRows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+  const expiredLeadRows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
     SELECT l.id, l."createdAt"
     FROM "Lead" l
-    LEFT JOIN "LeadUnlockRequest" u
-      ON u."leadId" = l.id AND u.status = 'APPROVED'
-    GROUP BY l.id, l."unlockLimit", l."createdAt"
-    HAVING l."createdAt" < ${cutoff}
-      OR COUNT(u.id) >= COALESCE(l."unlockLimit", 1)
+    WHERE l."createdAt" < ${cutoff}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM "LeadUnlockRequest" u
+        WHERE u."leadId" = l.id
+          AND u.status = 'APPROVED'
+      )
     ORDER BY l."createdAt" DESC
     OFFSET ${skip} LIMIT ${PAGE_SIZE}
   `);
 
-  const leadIds = archivedLeadRows.map((row) => row.id);
+  const leadIds = expiredLeadRows.map((row) => row.id);
   const leads = leadIds.length
     ? await prisma.lead.findMany({
         where: { id: { in: leadIds } },
@@ -78,16 +79,14 @@ export default async function ArchivedLeadsPage({
       <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header>
-          <h2 className="text-xl font-semibold">Archived leads</h2>
-          <p className="text-sm text-slate-600">
-            Sold-out leads (unlock limit reached) and expired/hidden leads for billing reference.
-          </p>
+          <h2 className="text-xl font-semibold">Expired leads</h2>
+          <p className="text-sm text-slate-600">Leads that expired after 48 hours without a purchase.</p>
         </header>
 
         <div className="grid gap-4">
-          {archivedCount === 0 ? (
+          {expiredCount === 0 ? (
             <div className="bg-white rounded-xl border p-6 text-sm text-slate-600">
-              No archived leads yet.
+              No expired leads yet.
             </div>
           ) : null}
           {pagedLeads.map((lead) => (
@@ -103,42 +102,19 @@ export default async function ArchivedLeadsPage({
                   <p className="text-sm text-slate-600">
                     {lead.address}, {lead.city}
                   </p>
-                  <p className="text-xs text-slate-500">
-                    Posted {formatCentralDateTime(lead.createdAt)}
-                  </p>
+                  <p className="text-xs text-slate-500">Posted {formatCentralDateTime(lead.createdAt)}</p>
                 </div>
               </div>
               <PhotoLightbox photos={lead.photos} />
               <div>
                 <p className="text-sm font-semibold">Purchases</p>
-                {lead.unlocks.length === 0 ? (
-                  <p className="text-sm text-slate-600">No purchases.</p>
-                ) : (
-                  <ul className="mt-2 space-y-1 text-sm text-slate-700">
-                    {lead.unlocks.map((unlock) => {
-                      const contractorLabel =
-                        unlock.contractor.businessName?.trim() || unlock.contractor.name;
-                      return (
-                        <li key={unlock.id} className="flex flex-wrap justify-between gap-2">
-                          <span>
-                            {unlock.contractor.name} ({contractorLabel})
-                          </span>
-                          <span className="text-slate-500">
-                            {unlock.approvedAt
-                              ? formatCentralDateTime(unlock.approvedAt)
-                              : "Approved"} • ${lead.price}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                <p className="text-sm text-slate-600">No purchases.</p>
               </div>
             </div>
           ))}
         </div>
 
-        <Pagination page={currentPage} totalPages={totalPages} basePath="/admin/archived-leads" />
+        <Pagination page={currentPage} totalPages={totalPages} basePath="/admin/expired-leads" />
       </main>
     </div>
   );

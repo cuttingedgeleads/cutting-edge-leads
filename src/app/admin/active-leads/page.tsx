@@ -30,6 +30,9 @@ export default async function ActiveLeadsPage({
   const pageParam = Number(params?.page ?? "1");
   const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - 48);
+
   const activeCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
     SELECT COUNT(*)::bigint AS count
     FROM (
@@ -37,6 +40,7 @@ export default async function ActiveLeadsPage({
       FROM "Lead" l
       LEFT JOIN "LeadUnlockRequest" u
         ON u."leadId" = l.id AND u.status = 'APPROVED'
+      WHERE l."createdAt" >= ${cutoff}
       GROUP BY l.id, l."unlockLimit"
       HAVING COUNT(u.id) < COALESCE(l."unlockLimit", 1)
     ) AS filtered
@@ -52,6 +56,7 @@ export default async function ActiveLeadsPage({
     FROM "Lead" l
     LEFT JOIN "LeadUnlockRequest" u
       ON u."leadId" = l.id AND u.status = 'APPROVED'
+    WHERE l."createdAt" >= ${cutoff}
     GROUP BY l.id, l."createdAt", l."unlockLimit"
     HAVING COUNT(u.id) < COALESCE(l."unlockLimit", 1)
     ORDER BY l."createdAt" DESC

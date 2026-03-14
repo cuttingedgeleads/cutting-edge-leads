@@ -7,8 +7,8 @@ const tabs = [
   { href: "/admin", label: "Dashboard" },
   { href: "/admin/leads", label: "Create Lead" },
   { href: "/admin/active-leads", label: "Active Leads" },
-  { href: "/admin/archived-leads", label: "Archived Leads" },
-  { href: "/admin/requests", label: "Requests" },
+  { href: "/admin/purchased-leads", label: "Purchased Leads" },
+  { href: "/admin/expired-leads", label: "Expired Leads" },
   { href: "/admin/contractors", label: "Contractors" },
 ];
 

@@ -103,33 +103,14 @@ export default async function LeadsPage({
     ) AS filtered
   `);
 
-  const purchasedCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
-    SELECT COUNT(*)::bigint AS count
-    FROM "Lead" l
-    WHERE l."createdAt" >= ${cutoff}
-    ${cityClause}
-    AND EXISTS (
-      SELECT 1
-      FROM "LeadUnlockRequest" u
-      WHERE u."leadId" = l.id
-        AND u.status = 'APPROVED'
-        AND u."contractorId" = ${session.user.id}
-    )
-  `);
-
   const unpurchasedCount = Number(availableCountResult[0]?.count ?? 0);
-  const purchasedCount = Number(purchasedCountResult[0]?.count ?? 0);
   const availableLeadCount = unpurchasedCount;
 
-  const totalCount = unpurchasedCount + purchasedCount;
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(unpurchasedCount / PAGE_SIZE));
   const currentPage = Math.min(requestedPage, totalPages);
-  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const skip = (currentPage - 1) * PAGE_SIZE;
 
-  const unpurchasedToFetch = Math.max(0, Math.min(PAGE_SIZE, unpurchasedCount - startIndex));
-  const purchasedToFetch = PAGE_SIZE - unpurchasedToFetch;
-
-  const unpurchasedRows = unpurchasedToFetch
+  const unpurchasedRows = unpurchasedCount
     ? await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
         SELECT l.id, l."createdAt"
         FROM "Lead" l
@@ -147,38 +128,12 @@ export default async function LeadsPage({
         GROUP BY l.id, l."createdAt", l."unlockLimit"
         HAVING COUNT(u.id) < COALESCE(l."unlockLimit", 1)
         ORDER BY l."createdAt" DESC
-        OFFSET ${startIndex} LIMIT ${unpurchasedToFetch}
-      `)
-    : [];
-
-  const purchasedSkip = Math.max(0, startIndex - unpurchasedCount);
-  const purchasedRows = purchasedToFetch
-    ? await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-        SELECT l.id, l."createdAt"
-        FROM "Lead" l
-        WHERE l."createdAt" >= ${cutoff}
-        ${cityClause}
-        AND EXISTS (
-          SELECT 1
-          FROM "LeadUnlockRequest" u
-          WHERE u."leadId" = l.id
-            AND u.status = 'APPROVED'
-            AND u."contractorId" = ${session.user.id}
-        )
-        ORDER BY l."createdAt" DESC
-        OFFSET ${purchasedSkip} LIMIT ${purchasedToFetch}
+        OFFSET ${skip} LIMIT ${PAGE_SIZE}
       `)
     : [];
 
   const availableLeadIds = unpurchasedRows.map((row) => row.id);
-  const purchasedLeadIds = purchasedRows.map((row) => row.id);
-
-  const [availableLeads, purchasedLeadsPage] = await Promise.all([
-    fetchLeadsByIds(availableLeadIds),
-    fetchLeadsByIds(purchasedLeadIds),
-  ]);
-
-  const visibleLeads = [...availableLeads, ...purchasedLeadsPage];
+  const availableLeads = await fetchLeadsByIds(availableLeadIds);
 
   return (
     <div className="min-h-screen">
@@ -203,12 +158,12 @@ export default async function LeadsPage({
         </header>
 
         <div className="grid gap-4">
-          {visibleLeads.length === 0 ? (
+          {availableLeads.length === 0 ? (
             <div className="bg-white rounded-xl border p-6 text-sm text-slate-600">
               No leads currently available.
             </div>
           ) : null}
-          {visibleLeads.map((lead) => {
+          {availableLeads.map((lead) => {
             const myRequest = lead.unlocks.find((u) => u.contractorId === session.user.id);
             const approvedCount = lead.unlocks.filter((u) => u.status === "APPROVED").length;
             const unlockLimit = lead.unlockLimit ?? 1;
