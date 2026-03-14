@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { AdminTabs } from "@/components/AdminTabs";
 
-export function AdminHeader({ name }: { name?: string | null }) {
-  const normalizedName = name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  const displayName = normalizedName || "Admin";
+export function AdminHeader({ name: _name }: { name?: string | null }) {
+  const displayName = "Admin Dashboard";
 
   const handleSignOut = async () => {
     const confirmed = window.confirm("Are you sure you want to sign out?");
@@ -24,7 +24,12 @@ export function AdminHeader({ name }: { name?: string | null }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col">
             <p className="text-sm text-slate-500">Cutting Edge Leads</p>
-            <p className="font-semibold">{displayName}</p>
+            <Link
+              href="/admin"
+              className="font-semibold text-slate-900 hover:text-slate-700"
+            >
+              {displayName}
+            </Link>
           </div>
           <button
             onClick={handleSignOut}
