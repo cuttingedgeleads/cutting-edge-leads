@@ -89,29 +89,38 @@ export default async function ExpiredLeadsPage({
               No expired leads yet.
             </div>
           ) : null}
-          {pagedLeads.map((lead) => (
-            <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
-              <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                Price ${lead.price}
-              </div>
-              <div className="flex flex-wrap justify-between gap-2">
-                <div className="min-w-0 pr-32">
-                  <p className="font-semibold break-words">{lead.jobType}</p>
-                  <p className="text-sm text-slate-700">{lead.name}</p>
-                  <p className="text-sm text-slate-600">{lead.email}</p>
-                  <p className="text-sm text-slate-600">
-                    {lead.address}, {lead.city}
+          {pagedLeads.map((lead) => {
+            const approvedCount = lead.unlocks.length;
+            const unlockLimit = lead.unlockLimit ?? 1;
+            return (
+              <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
+                <div className="absolute right-4 top-4 text-right">
+                  <div className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+                    Price ${lead.price}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {approvedCount}/{unlockLimit} unlocked
                   </p>
-                  <p className="text-xs text-slate-500">Posted {formatCentralDateTime(lead.createdAt)}</p>
+                </div>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <div className="min-w-0 pr-32">
+                    <p className="font-semibold break-words">{lead.jobType}</p>
+                    <p className="text-sm text-slate-700">{lead.name}</p>
+                    <p className="text-sm text-slate-600">{lead.email}</p>
+                    <p className="text-sm text-slate-600">
+                      {lead.address}, {lead.city}
+                    </p>
+                    <p className="text-xs text-slate-500">Posted {formatCentralDateTime(lead.createdAt)}</p>
+                  </div>
+                </div>
+                <PhotoLightbox photos={lead.photos} />
+                <div>
+                  <p className="text-sm font-semibold">Purchases</p>
+                  <p className="text-sm text-slate-600">No purchases.</p>
                 </div>
               </div>
-              <PhotoLightbox photos={lead.photos} />
-              <div>
-                <p className="text-sm font-semibold">Purchases</p>
-                <p className="text-sm text-slate-600">No purchases.</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <Pagination page={currentPage} totalPages={totalPages} basePath="/admin/expired-leads" />
