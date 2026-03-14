@@ -6,9 +6,9 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/admin/leads", label: "Create Lead" },
   { href: "/admin/active-leads", label: "Active Leads" },
+  { href: "/admin/contractors", label: "Contractors" },
   { href: "/admin/purchased-leads", label: "Purchased Leads" },
   { href: "/admin/expired-leads", label: "Expired Leads" },
-  { href: "/admin/contractors", label: "Contractors" },
 ];
 
 function isActiveTab(pathname: string, href: string) {
