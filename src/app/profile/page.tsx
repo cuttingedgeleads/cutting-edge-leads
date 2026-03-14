@@ -418,7 +418,8 @@ export default async function ProfilePage() {
             <div>
               <p className="text-sm font-semibold text-slate-700">Lead job type alerts</p>
               <p className="text-xs text-slate-500">
-                Pick which job types you want to receive push notifications for.
+                Which job types you want to receive notifications for. These selections apply to
+                email, text, and push alerts.
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
