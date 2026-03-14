@@ -134,7 +134,7 @@ export default async function LeadsPage({
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header className="space-y-2">
-          <h2 className="text-xl font-semibold">Available leads</h2>
+          <h2 className="text-xl font-semibold">Available Leads</h2>
           <p className="text-sm text-slate-600">
             Unlock a lead instantly.
           </p>

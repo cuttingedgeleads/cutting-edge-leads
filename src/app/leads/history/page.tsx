@@ -103,7 +103,7 @@ export default async function PurchaseHistoryPage({
       />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header className="space-y-2">
-          <h2 className="text-xl font-semibold">Purchased leads</h2>
+          <h2 className="text-xl font-semibold">Purchased Leads</h2>
           <p className="text-sm text-slate-600">All approved lead unlocks.</p>
         </header>
 

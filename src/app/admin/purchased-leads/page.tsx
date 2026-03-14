@@ -71,7 +71,7 @@ export default async function PurchasedLeadsPage({
       <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header>
-          <h2 className="text-xl font-semibold">Purchased leads</h2>
+          <h2 className="text-xl font-semibold">Purchased Leads</h2>
           <p className="text-sm text-slate-600">Leads with at least one approved purchase.</p>
         </header>
 
