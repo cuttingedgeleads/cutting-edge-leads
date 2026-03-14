@@ -136,7 +136,7 @@ export default async function LeadsPage({
         <header className="space-y-2">
           <h2 className="text-xl font-semibold">Available leads</h2>
           <p className="text-sm text-slate-600">
-            Unlock a lead instantly with PayPal, Venmo, or Apple Pay.
+            Unlock a lead instantly.
           </p>
 
         </header>
