@@ -104,13 +104,13 @@ export default async function PurchaseHistoryPage({
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-6">
         <header className="space-y-2">
           <h2 className="text-xl font-semibold">Purchased Leads</h2>
-          <p className="text-sm text-slate-600">All approved lead unlocks.</p>
+          <p className="text-sm text-slate-600">All purchased lead unlocks.</p>
         </header>
 
         <div className="grid gap-4">
           {purchases.length === 0 ? (
             <div className="bg-white rounded-xl border p-6 text-sm text-slate-600">
-              No approved purchases yet.
+              No purchased leads yet.
             </div>
           ) : null}
           {purchases.map((purchase) => (
