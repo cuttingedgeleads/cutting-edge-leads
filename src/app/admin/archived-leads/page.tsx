@@ -1,40 +1,77 @@
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCentralDateTime } from "@/lib/datetime";
 import { AdminHeader } from "@/components/AdminHeader";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
+import { Pagination } from "@/components/Pagination";
 
-const MAX_UNLOCKS = 2;
+const PAGE_SIZE = 5;
 
-function isExpired(date: Date) {
-  const expiresAt = new Date(date);
-  expiresAt.setHours(expiresAt.getHours() + 24);
-  return new Date() > expiresAt;
-}
-
-export default async function ArchivedLeadsPage() {
+export default async function ArchivedLeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/");
 
-  const leads = await prisma.lead.findMany({
-    include: {
-      photos: true,
-      unlocks: {
-        where: { status: "APPROVED" },
-        include: { contractor: true },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const params = await searchParams;
+  const pageParam = Number(params?.page ?? "1");
+  const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
-  const archivedLeads = leads.filter((lead) => {
-    const approvedCount = lead.unlocks.length;
-    const expired = isExpired(lead.createdAt);
-    const soldOut = approvedCount >= MAX_UNLOCKS;
-    return expired || soldOut;
-  });
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - 48);
+
+  const archivedCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS count
+    FROM (
+      SELECT l.id
+      FROM "Lead" l
+      LEFT JOIN "LeadUnlockRequest" u
+        ON u."leadId" = l.id AND u.status = 'APPROVED'
+      GROUP BY l.id, l."unlockLimit", l."createdAt"
+      HAVING l."createdAt" < ${cutoff}
+        OR COUNT(u.id) >= COALESCE(l."unlockLimit", 1)
+    ) AS filtered
+  `);
+
+  const archivedCount = Number(archivedCountResult[0]?.count ?? 0);
+  const totalPages = Math.max(1, Math.ceil(archivedCount / PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const skip = (currentPage - 1) * PAGE_SIZE;
+
+  const archivedLeadRows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+    SELECT l.id, l."createdAt"
+    FROM "Lead" l
+    LEFT JOIN "LeadUnlockRequest" u
+      ON u."leadId" = l.id AND u.status = 'APPROVED'
+    GROUP BY l.id, l."unlockLimit", l."createdAt"
+    HAVING l."createdAt" < ${cutoff}
+      OR COUNT(u.id) >= COALESCE(l."unlockLimit", 1)
+    ORDER BY l."createdAt" DESC
+    OFFSET ${skip} LIMIT ${PAGE_SIZE}
+  `);
+
+  const leadIds = archivedLeadRows.map((row) => row.id);
+  const leads = leadIds.length
+    ? await prisma.lead.findMany({
+        where: { id: { in: leadIds } },
+        include: {
+          photos: true,
+          unlocks: {
+            where: { status: "APPROVED" },
+            include: { contractor: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+
+  const leadMap = new Map(leads.map((lead) => [lead.id, lead]));
+  const pagedLeads = leadIds.map((id) => leadMap.get(id)).filter(Boolean);
 
   return (
     <div className="min-h-screen">
@@ -43,17 +80,17 @@ export default async function ArchivedLeadsPage() {
         <header>
           <h2 className="text-xl font-semibold">Archived leads</h2>
           <p className="text-sm text-slate-600">
-            Sold-out leads ({MAX_UNLOCKS} unlocks) and expired/hidden leads for billing reference.
+            Sold-out leads (unlock limit reached) and expired/hidden leads for billing reference.
           </p>
         </header>
 
         <div className="grid gap-4">
-          {archivedLeads.length === 0 ? (
+          {archivedCount === 0 ? (
             <div className="bg-white rounded-xl border p-6 text-sm text-slate-600">
               No archived leads yet.
             </div>
           ) : null}
-          {archivedLeads.map((lead) => (
+          {pagedLeads.map((lead) => (
             <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
               <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
                 Price ${lead.price}
@@ -100,6 +137,8 @@ export default async function ArchivedLeadsPage() {
             </div>
           ))}
         </div>
+
+        <Pagination page={currentPage} totalPages={totalPages} basePath="/admin/archived-leads" />
       </main>
     </div>
   );

@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { formatCentralDate, formatCentralTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { UnlockButton } from "@/components/UnlockButton";
-
-function isExpired(date: Date) {
-  const expiresAt = new Date(date);
-  expiresAt.setHours(expiresAt.getHours() + 24);
-  return new Date() > expiresAt;
-}
+import { Pagination } from "@/components/Pagination";
 
 function formatPostedAt(date: Date) {
   const datePart = formatCentralDate(date, {
@@ -41,18 +37,31 @@ function formatRelativePostedAt(date: Date) {
   return `Posted ${diffDays} days ago`;
 }
 
-export default async function LeadsPage() {
+const PAGE_SIZE = 5;
+
+async function fetchLeadsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  const leads = await prisma.lead.findMany({
+    where: { id: { in: ids } },
+    include: { photos: true, unlocks: true },
+    orderBy: { createdAt: "desc" },
+  });
+  const leadMap = new Map(leads.map((lead) => [lead.id, lead]));
+  return ids.map((id) => leadMap.get(id)).filter((l): l is typeof leads[number] => !!l);
+}
+
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ page?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
-  const leads = await prisma.lead.findMany({
-    include: {
-      photos: true,
-      unlocks: true,
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const params = await searchParams;
+  const pageParam = Number(params?.page ?? "1");
+  const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -66,29 +75,113 @@ export default async function LeadsPage() {
     .map((city) => city.trim().toLowerCase())
     .filter(Boolean);
 
-  const visibleLeads = leads
-    .filter((lead) => {
-      // If no service cities configured, show all leads
-      const cityMatch =
-        allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
-      return !isExpired(lead.createdAt) && cityMatch;
-    })
-    .sort((a, b) => {
-      const aPurchased = a.unlocks.some(
-        (unlock) => unlock.contractorId === session.user.id && unlock.status === "APPROVED"
-      );
-      const bPurchased = b.unlocks.some(
-        (unlock) => unlock.contractorId === session.user.id && unlock.status === "APPROVED"
-      );
-      if (aPurchased !== bPurchased) {
-        return aPurchased ? 1 : -1;
-      }
-      return b.createdAt.getTime() - a.createdAt.getTime();
-    });
+  const cutoff = new Date();
+  cutoff.setHours(cutoff.getHours() - 48);
 
-  const availableLeadCount = visibleLeads.filter((lead) =>
-    lead.unlocks.every((unlock) => unlock.status !== "APPROVED")
-  ).length;
+  const cityClause = allowedCities.length
+    ? Prisma.sql`AND (${Prisma.join(
+        allowedCities.map((city) => Prisma.sql`LOWER(l."city") = ${city}`),
+        Prisma.sql` OR `
+      )})`
+    : Prisma.empty;
+
+  const availableCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS count
+    FROM (
+      SELECT l.id
+      FROM "Lead" l
+      LEFT JOIN "LeadUnlockRequest" u
+        ON u."leadId" = l.id AND u.status = 'APPROVED'
+      WHERE l."createdAt" >= ${cutoff}
+      ${cityClause}
+      AND NOT EXISTS (
+        SELECT 1
+        FROM "LeadUnlockRequest" u2
+        WHERE u2."leadId" = l.id
+          AND u2.status = 'APPROVED'
+          AND u2."contractorId" = ${session.user.id}
+      )
+      GROUP BY l.id, l."unlockLimit"
+      HAVING COUNT(u.id) < COALESCE(l."unlockLimit", 1)
+    ) AS filtered
+  `);
+
+  const purchasedCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
+    SELECT COUNT(*)::bigint AS count
+    FROM "Lead" l
+    WHERE l."createdAt" >= ${cutoff}
+    ${cityClause}
+    AND EXISTS (
+      SELECT 1
+      FROM "LeadUnlockRequest" u
+      WHERE u."leadId" = l.id
+        AND u.status = 'APPROVED'
+        AND u."contractorId" = ${session.user.id}
+    )
+  `);
+
+  const unpurchasedCount = Number(availableCountResult[0]?.count ?? 0);
+  const purchasedCount = Number(purchasedCountResult[0]?.count ?? 0);
+  const availableLeadCount = unpurchasedCount;
+
+  const totalCount = unpurchasedCount + purchasedCount;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+
+  const unpurchasedToFetch = Math.max(0, Math.min(PAGE_SIZE, unpurchasedCount - startIndex));
+  const purchasedToFetch = PAGE_SIZE - unpurchasedToFetch;
+
+  const unpurchasedRows = unpurchasedToFetch
+    ? await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT l.id, l."createdAt"
+        FROM "Lead" l
+        LEFT JOIN "LeadUnlockRequest" u
+          ON u."leadId" = l.id AND u.status = 'APPROVED'
+        WHERE l."createdAt" >= ${cutoff}
+        ${cityClause}
+        AND NOT EXISTS (
+          SELECT 1
+          FROM "LeadUnlockRequest" u2
+          WHERE u2."leadId" = l.id
+            AND u2.status = 'APPROVED'
+            AND u2."contractorId" = ${session.user.id}
+        )
+        GROUP BY l.id, l."createdAt", l."unlockLimit"
+        HAVING COUNT(u.id) < COALESCE(l."unlockLimit", 1)
+        ORDER BY l."createdAt" DESC
+        OFFSET ${startIndex} LIMIT ${unpurchasedToFetch}
+      `)
+    : [];
+
+  const purchasedSkip = Math.max(0, startIndex - unpurchasedCount);
+  const purchasedRows = purchasedToFetch
+    ? await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        SELECT l.id, l."createdAt"
+        FROM "Lead" l
+        WHERE l."createdAt" >= ${cutoff}
+        ${cityClause}
+        AND EXISTS (
+          SELECT 1
+          FROM "LeadUnlockRequest" u
+          WHERE u."leadId" = l.id
+            AND u.status = 'APPROVED'
+            AND u."contractorId" = ${session.user.id}
+        )
+        ORDER BY l."createdAt" DESC
+        OFFSET ${purchasedSkip} LIMIT ${purchasedToFetch}
+      `)
+    : [];
+
+  const availableLeadIds = unpurchasedRows.map((row) => row.id);
+  const purchasedLeadIds = purchasedRows.map((row) => row.id);
+
+  const [availableLeads, purchasedLeadsPage] = await Promise.all([
+    fetchLeadsByIds(availableLeadIds),
+    fetchLeadsByIds(purchasedLeadIds),
+  ]);
+
+  const visibleLeads = [...availableLeads, ...purchasedLeadsPage];
 
   return (
     <div className="min-h-screen">
@@ -121,8 +214,9 @@ export default async function LeadsPage() {
           {visibleLeads.map((lead) => {
             const myRequest = lead.unlocks.find((u) => u.contractorId === session.user.id);
             const approvedCount = lead.unlocks.filter((u) => u.status === "APPROVED").length;
+            const unlockLimit = lead.unlockLimit ?? 1;
             const isApproved = myRequest?.status === "APPROVED";
-            const soldOut = approvedCount >= 2;
+            const soldOut = approvedCount >= unlockLimit;
             return (
               <div key={lead.id} className="relative bg-white rounded-xl border p-4 space-y-3">
                 <div className="absolute right-4 top-4 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
@@ -173,6 +267,8 @@ export default async function LeadsPage() {
             );
           })}
         </div>
+
+        <Pagination page={currentPage} totalPages={totalPages} basePath="/leads" />
       </main>
     </div>
   );
