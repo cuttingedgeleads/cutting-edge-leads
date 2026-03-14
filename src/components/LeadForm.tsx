@@ -517,6 +517,7 @@ export function LeadForm() {
         { name: "phone", label: "Phone" },
         { name: "jobType", label: "Job type" },
         { name: "price", label: "Price" },
+        { name: "unlockLimit", label: "Unlock limit" },
         { name: "description", label: "Description" },
         { name: "address", label: "Street address" },
         { name: "city", label: "City" },
@@ -705,6 +706,19 @@ export function LeadForm() {
           className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("price") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         />
+      </div>
+      <div>
+        <label className="text-sm font-medium">Unlock limit</label>
+        <select
+          name="unlockLimit"
+          defaultValue="1"
+          className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("unlockLimit") ? "border-red-500 ring-1 ring-red-500" : ""}`}
+          required
+        >
+          <option value="1">1 contractor</option>
+          <option value="2">2 contractors</option>
+          <option value="3">3 contractors</option>
+        </select>
       </div>
       <div className="sm:col-span-2">
         <label className="text-sm font-medium">Description</label>

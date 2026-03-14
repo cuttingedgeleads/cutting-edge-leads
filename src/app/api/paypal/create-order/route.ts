@@ -5,7 +5,7 @@ import { createPayPalOrder } from "@/lib/paypal";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
-  expiresAt.setHours(expiresAt.getHours() + 24);
+  expiresAt.setHours(expiresAt.getHours() + 48);
   return new Date() > expiresAt;
 }
 
@@ -36,7 +36,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Lead expired" }, { status: 400 });
     }
 
-    if (lead.unlocks.length >= 2) {
+    const unlockLimit = lead.unlockLimit ?? 1;
+    if (lead.unlocks.length >= unlockLimit) {
       return NextResponse.json({ error: "Lead sold out" }, { status: 400 });
     }
 

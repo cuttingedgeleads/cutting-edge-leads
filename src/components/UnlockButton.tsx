@@ -118,7 +118,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                 </p>
               </div>
               <p className="text-xs text-slate-500">
-                Pay with PayPal, Venmo, or Apple Pay (where available).
+                Pay with PayPal or Venmo.
               </p>
             </div>
 
@@ -129,7 +129,7 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   currency: "USD",
                   intent: "capture",
                   components: "buttons,funding-eligibility",
-                  "enable-funding": "venmo,applepay",
+                  "enable-funding": "venmo",
                   "disable-funding": "card,credit,paylater",
                 }}
               >
@@ -164,24 +164,6 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                     }}
                     onError={(err) => {
                       console.error("Venmo checkout error", err);
-                      const errMsg = err instanceof Error ? err.message : String(err);
-                      setStatus("error");
-                      setErrorMessage(errMsg || "Checkout failed. Please try again.");
-                    }}
-                    disabled={status === "creating" || status === "processing"}
-                  />
-                  {/* Apple Pay Button */}
-                  <PayPalButtons
-                    fundingSource={FUNDING.APPLEPAY}
-                    style={{ layout: "vertical" }}
-                    createOrder={createOrder}
-                    onApprove={(data) => handleApprove(data.orderID)}
-                    onCancel={() => {
-                      setStatus("idle");
-                      setErrorMessage(null);
-                    }}
-                    onError={(err) => {
-                      console.error("Apple Pay checkout error", err);
                       const errMsg = err instanceof Error ? err.message : String(err);
                       setStatus("error");
                       setErrorMessage(errMsg || "Checkout failed. Please try again.");
