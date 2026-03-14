@@ -65,22 +65,13 @@ export default async function LeadsPage({
 
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, serviceCities: true, businessName: true },
+    select: { name: true, businessName: true },
   });
 
   const paypalClientId = (process.env.PAYPAL_CLIENT_ID ?? "").trim();
 
-  const allowedCities = (contractor?.serviceCities || "")
-    .split(",")
-    .map((city) => city.trim().toLowerCase())
-    .filter(Boolean);
-
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - 48);
-
-  const cityClause = allowedCities.length
-    ? Prisma.sql`AND LOWER(l."city") IN (${Prisma.join(allowedCities)})`
-    : Prisma.empty;
 
   const availableCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
     SELECT COUNT(*)::bigint AS count
@@ -90,7 +81,6 @@ export default async function LeadsPage({
       LEFT JOIN "LeadUnlockRequest" u
         ON u."leadId" = l.id AND u.status = 'APPROVED'
       WHERE l."createdAt" >= ${cutoff}
-      ${cityClause}
       AND NOT EXISTS (
         SELECT 1
         FROM "LeadUnlockRequest" u2
@@ -117,7 +107,6 @@ export default async function LeadsPage({
         LEFT JOIN "LeadUnlockRequest" u
           ON u."leadId" = l.id AND u.status = 'APPROVED'
         WHERE l."createdAt" >= ${cutoff}
-        ${cityClause}
         AND NOT EXISTS (
           SELECT 1
           FROM "LeadUnlockRequest" u2
@@ -149,12 +138,7 @@ export default async function LeadsPage({
           <p className="text-sm text-slate-600">
             Unlock a lead instantly with PayPal, Venmo, or Apple Pay.
           </p>
-          <div className="flex flex-wrap gap-2 items-center text-sm">
-            <label className="font-medium">Service area filter (placeholder)</label>
-            <select className="rounded-lg border px-2 py-1" disabled>
-              <option>Coming soon</option>
-            </select>
-          </div>
+
         </header>
 
         <div className="grid gap-4">
@@ -225,3 +209,4 @@ export default async function LeadsPage({
     </div>
   );
 }
+
