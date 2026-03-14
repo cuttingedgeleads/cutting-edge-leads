@@ -36,12 +36,11 @@ type ChurnSignal = {
   note: string;
 };
 
-const MAX_UNLOCKS = 2;
 const CHURN_DAYS = 21;
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
-  expiresAt.setHours(expiresAt.getHours() + 24);
+  expiresAt.setHours(expiresAt.getHours() + 48);
   return new Date() > expiresAt;
 }
 
@@ -67,6 +66,15 @@ function median(values: number[]) {
 
 function formatContractorName(name: string, businessName?: string | null) {
   return businessName?.trim() ? businessName : name;
+}
+
+function formatResponseDuration(hours: number) {
+  if (!Number.isFinite(hours) || hours <= 0) return "—";
+  if (hours < 1) {
+    const minutes = Math.max(1, Math.round(hours * 60));
+    return `${minutes} minutes`;
+  }
+  return `${hours.toFixed(1)} hrs`;
 }
 
 export default async function AdminDashboardPage() {
@@ -106,7 +114,8 @@ export default async function AdminDashboardPage() {
 
   leadsLast30.forEach((lead) => {
     const approvedCount = lead.unlocks.length;
-    if (approvedCount >= MAX_UNLOCKS) {
+    const unlockLimit = lead.unlockLimit ?? 1;
+    if (approvedCount >= unlockLimit) {
       leadStatuses[2].value += 1;
       return;
     }
@@ -134,6 +143,11 @@ export default async function AdminDashboardPage() {
   const approvedRecent = approvedUnlocks.filter((unlock) => unlock.createdAt >= last30);
   const responseTimes = approvedRecent.map((unlock) => hoursBetween(unlock.createdAt, unlock.lead.createdAt));
   const medianResponse = median(responseTimes);
+  const revenueTotal = approvedRecent.reduce((sum, unlock) => sum + (Number.isFinite(unlock.lead.price) ? unlock.lead.price : 0), 0);
+  const revenueFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  });
 
   const approvalsByContractor = new Map<string, {
     name: string;
@@ -277,7 +291,7 @@ export default async function AdminDashboardPage() {
             />
             <StatCard
               label="Avg response time"
-              value={medianResponse ? `${medianResponse.toFixed(1)} hrs` : "—"}
+              value={formatResponseDuration(medianResponse)}
               helper="Median response"
             />
           </div>
@@ -306,8 +320,8 @@ export default async function AdminDashboardPage() {
             <h3 className="text-lg font-semibold">Revenue</h3>
             <p className="text-sm text-slate-500">Recurring revenue from active contractors.</p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <StatCard label="MRR" value="$0" helper="Billing not configured" />
-              <StatCard label="Total revenue" value="$0" helper="Billing not configured" />
+              <StatCard label="MRR" value={revenueFormatter.format(revenueTotal)} helper="Last 30 days" />
+              <StatCard label="Total revenue" value={revenueFormatter.format(revenueTotal)} helper="Price × conversions" />
               <StatCard label="Growth" value="—" helper="Billing not configured" />
               <StatCard label="Churn impact" value="—" helper="Billing not configured" />
             </div>
@@ -336,7 +350,7 @@ export default async function AdminDashboardPage() {
                     <div key={performer.name} className="flex items-center justify-between text-sm">
                       <div>
                         <p className="font-medium text-slate-900">{performer.name}</p>
-                        <p className="text-xs text-slate-500">Avg response {performer.responseHours} hrs</p>
+                        <p className="text-xs text-slate-500">Avg response {formatResponseDuration(performer.responseHours)}</p>
                       </div>
                       <p className="font-semibold text-slate-700">{performer.conversions} conversions</p>
                     </div>
