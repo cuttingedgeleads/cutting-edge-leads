@@ -310,18 +310,20 @@ export default async function ProfilePage() {
     .filter(Boolean);
 
   const cutoff = new Date();
-  cutoff.setHours(cutoff.getHours() - 24);
+  cutoff.setHours(cutoff.getHours() - 48);
 
   const availableLeads = await prisma.lead.findMany({
     where: { createdAt: { gte: cutoff } },
-    select: { city: true, unlocks: { select: { status: true } } },
+    select: { city: true, unlockLimit: true, unlocks: { select: { status: true } } },
   });
 
   const availableLeadCount = availableLeads.filter((lead) => {
     const cityMatch =
       allowedCities.length === 0 || allowedCities.includes(lead.city.toLowerCase());
     if (!cityMatch) return false;
-    return lead.unlocks.every((unlock) => unlock.status !== "APPROVED");
+    const approvedCount = lead.unlocks.filter((unlock) => unlock.status === "APPROVED").length;
+    const unlockLimit = lead.unlockLimit ?? 1;
+    return approvedCount < unlockLimit;
   }).length;
 
   return (
@@ -341,18 +343,16 @@ export default async function ProfilePage() {
             </p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600 max-w-xl">
-              Use the button to allow browser notifications. If you’re on iOS, install the app
-              first so alerts can be delivered.
-            </p>
             <EnableNotificationsButton />
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-700">iOS setup</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
-              <li>Open Cutting Edge Leads in Safari and tap Share (□↑).</li>
-              <li>Select “Add to Home Screen.”</li>
-              <li>Launch the app from your home screen, then tap Enable Notifications.</li>
+              <li>
+                Open Cutting Edge Leads in Safari and tap Share. Scroll down until you see the
+                option &quot;Add to Home Screen.&quot; and select. Launch the app from your home screen,
+                then tap Enable Notifications
+              </li>
             </ol>
             <p className="mt-2 text-xs text-slate-500">Requires iOS 16.4 or newer.</p>
           </div>
