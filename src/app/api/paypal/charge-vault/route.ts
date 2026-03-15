@@ -175,6 +175,7 @@ export async function POST(request: NextRequest) {
     const message = error instanceof Error ? error.message : "Unknown error";
     const stack = error instanceof Error ? error.stack : undefined;
     console.error("PayPal vault charge failed:", { message, stack, error });
-    return NextResponse.json({ error: "Unable to charge saved PayPal" }, { status: 500 });
+    // Return actual error for debugging
+    return NextResponse.json({ error: message || "Unable to charge saved PayPal" }, { status: 500 });
   }
 }
