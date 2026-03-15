@@ -36,6 +36,7 @@ model User {
   notifySms              Boolean             @default(true)
   emailNotifications     Boolean             @default(true) @map("email_notifications")
   pushNotifications      Boolean             @default(true) @map("push_notifications")
+  isTestAccount          Boolean             @default(false)
   failedLoginAttempts    Int                 @default(0)
   lockedUntil            DateTime?
   createdAt              DateTime            @default(now())
@@ -93,6 +94,7 @@ model Lead {
   zip         String
   price       Int
   unlockLimit Int                  @default(1)
+  isTestLead  Boolean              @default(false)
   createdAt   DateTime             @default(now())
   photos      LeadPhoto[]
   unlocks     LeadUnlockRequest[]  @relation("LeadUnlocks")
@@ -117,4 +119,11 @@ model LeadUnlockRequest {
   contractor   User         @relation("UserUnlocks", fields: [contractorId], references: [id])
 
   @@unique([leadId, contractorId])
+}
+
+model AppSetting {
+  id        String   @id @default("global")
+  testMode  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

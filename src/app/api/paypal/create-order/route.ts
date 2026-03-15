@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { createPayPalOrder } from "@/lib/paypal";
+import { getTestMode } from "@/lib/settings";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -18,6 +19,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const leadId = String(body.leadId || "");
+    const testMode = await getTestMode();
+
+    const contractor = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { isTestAccount: true },
+    });
     // Card vaulting removed: PayPal/Venmo/Apple Pay only.
     if (!leadId) {
       return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
@@ -30,6 +37,14 @@ export async function POST(request: NextRequest) {
 
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    const contractorIsTest = contractor?.isTestAccount ?? false;
+    if (testMode && lead.isTestLead !== contractorIsTest) {
+      return NextResponse.json({ error: "Lead not available" }, { status: 403 });
+    }
+    if (!testMode && lead.isTestLead) {
+      return NextResponse.json({ error: "Lead not available" }, { status: 403 });
     }
 
     if (isExpired(lead.createdAt)) {

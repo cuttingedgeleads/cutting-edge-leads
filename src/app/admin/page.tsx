@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { getAppSettings, setTestMode } from "@/lib/settings";
+import { logAudit } from "@/lib/audit";
 import { AdminHeader } from "@/components/AdminHeader";
 
 type StatusSummary = {
@@ -77,10 +79,43 @@ function formatResponseDuration(hours: number) {
   return `${hours.toFixed(1)} hrs`;
 }
 
+async function updateTestMode(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "ADMIN") redirect("/");
+
+  const currentSettings = await getAppSettings();
+  const nextMode = formData.get("testMode") === "on";
+
+  await setTestMode(nextMode);
+
+  if (currentSettings.testMode && !nextMode) {
+    await prisma.$transaction([
+      prisma.leadUnlockRequest.deleteMany({ where: { lead: { isTestLead: true } } }),
+      prisma.leadPhoto.deleteMany({ where: { lead: { isTestLead: true } } }),
+      prisma.lead.deleteMany({ where: { isTestLead: true } }),
+    ]);
+  }
+
+  await logAudit({
+    action: "ADMIN_ACTION",
+    userId: session.user.id,
+    email: session.user.email,
+    details: { type: "TEST_MODE_UPDATED", enabled: nextMode },
+  });
+
+  redirect("/admin");
+}
+
 export default async function AdminDashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/");
+
+  const settings = await getAppSettings();
+  const testMode = settings.testMode;
 
   const now = new Date();
   const last30 = new Date(now);
@@ -270,6 +305,43 @@ export default async function AdminDashboardPage() {
     <div className="min-h-screen">
       <AdminHeader name={session.user.name} />
       <main className="mx-auto max-w-5xl px-4 py-8 space-y-8">
+        <section className="rounded-2xl border-2 border-slate-900 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">Test mode</p>
+              <h2 className="text-2xl font-semibold">
+                {testMode ? "Test Mode is ON" : "Test Mode is OFF"}
+              </h2>
+              <p className="text-sm text-slate-600">
+                {testMode
+                  ? "New leads are flagged as test leads and only test contractors are notified."
+                  : "All leads are live. Turning test mode on will route new leads only to test contractors."}
+              </p>
+            </div>
+            <form action={updateTestMode} className="flex items-center gap-3">
+              <label className="flex items-center gap-3 text-sm font-medium">
+                <span className="text-slate-700">Toggle</span>
+                <span className="relative inline-flex h-6 w-11 items-center">
+                  <input
+                    type="checkbox"
+                    name="testMode"
+                    defaultChecked={testMode}
+                    className="peer sr-only"
+                  />
+                  <span className="h-6 w-11 rounded-full bg-slate-200 transition peer-checked:bg-emerald-500" />
+                  <span className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+                </span>
+              </label>
+              <button
+                type="submit"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+              >
+                Update
+              </button>
+            </form>
+          </div>
+        </section>
+
         <section className="space-y-4">
           <div>
             <h2 className="text-2xl font-semibold">Admin dashboard</h2>

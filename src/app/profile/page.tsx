@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { compare, hash } from "bcryptjs";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { getTestMode } from "@/lib/settings";
 import { NavBar } from "@/components/NavBar";
 import { EnableNotificationsButton } from "@/components/EnableNotificationsButton";
 import { sanitizeInput } from "@/lib/sanitize";
@@ -222,6 +223,8 @@ export default async function ProfilePage() {
   if (!session) redirect("/login");
   if (session.user.role !== "CONTRACTOR") redirect("/");
 
+  const testMode = await getTestMode();
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: {
@@ -235,6 +238,7 @@ export default async function ProfilePage() {
       notifySms: true,
       emailNotifications: true,
       pushNotifications: true,
+      isTestAccount: true,
     },
   });
 
@@ -253,8 +257,12 @@ export default async function ProfilePage() {
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - 48);
 
+  const testLeadFilter = testMode
+    ? { isTestLead: user?.isTestAccount ?? false }
+    : { isTestLead: false };
+
   const availableLeads = await prisma.lead.findMany({
-    where: { createdAt: { gte: cutoff } },
+    where: { createdAt: { gte: cutoff }, ...testLeadFilter },
     select: { city: true, unlockLimit: true, unlocks: { select: { status: true } } },
   });
 

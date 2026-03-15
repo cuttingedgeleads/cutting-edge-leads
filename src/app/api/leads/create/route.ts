@@ -10,6 +10,7 @@ import { sendSms } from "@/lib/sms";
 import { sanitizeInput } from "@/lib/sanitize";
 import { logAudit } from "@/lib/audit";
 import { fetchLeadImages } from "@/lib/lead-images";
+import { getTestMode } from "@/lib/settings";
 
 const MIN_PRICE = 1;
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
+    const testMode = await getTestMode();
     
     const rawName = sanitizeInput(String(formData.get("name") || ""));
     const email = sanitizeInput(String(formData.get("email") || "")).toLowerCase();
@@ -148,6 +150,7 @@ export async function POST(request: NextRequest) {
         zip,
         price,
         unlockLimit,
+        isTestLead: testMode,
         createdAt: new Date(),
         photos: {
           create: allPhotos.map((url) => ({ url })),
@@ -168,6 +171,7 @@ export async function POST(request: NextRequest) {
         role: "CONTRACTOR",
         notifyNewLeads: true,
         emailNotifications: true,
+        ...(testMode ? { isTestAccount: true } : {}),
       },
       select: {
         email: true,
@@ -211,6 +215,7 @@ export async function POST(request: NextRequest) {
         role: "CONTRACTOR",
         notifyNewLeads: true,
         pushNotifications: true,
+        ...(testMode ? { isTestAccount: true } : {}),
       },
       select: {
         id: true,
@@ -240,6 +245,7 @@ export async function POST(request: NextRequest) {
         notifyNewLeads: true,
         notifySms: true,
         phone: { not: "" },
+        ...(testMode ? { isTestAccount: true } : {}),
       },
       select: {
         phone: true,

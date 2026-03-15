@@ -55,6 +55,33 @@ async function createContractor(formData: FormData) {
   redirect("/admin/contractors");
 }
 
+async function updateTestAccount(formData: FormData) {
+  "use server";
+
+  const session = await getSession();
+  if (!session) redirect("/login");
+  if (session.user.role !== "ADMIN") redirect("/");
+
+  const contractorId = String(formData.get("contractorId") || "");
+  const isTestAccount = formData.get("isTestAccount") === "on";
+
+  if (!contractorId) return;
+
+  await prisma.user.update({
+    where: { id: contractorId },
+    data: { isTestAccount },
+  });
+
+  await logAudit({
+    action: "ADMIN_ACTION",
+    userId: session.user.id,
+    email: session.user.email,
+    details: { type: "UPDATE_TEST_CONTRACTOR", contractorId, isTestAccount },
+  });
+
+  redirect("/admin/contractors");
+}
+
 export default async function ContractorsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
@@ -144,6 +171,24 @@ export default async function ContractorsPage() {
                     year: "2-digit",
                   })}
                 </p>
+                <form action={updateTestAccount} className="mt-3 flex items-center gap-3">
+                  <input type="hidden" name="contractorId" value={contractor.id} />
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <input
+                      type="checkbox"
+                      name="isTestAccount"
+                      defaultChecked={contractor.isTestAccount}
+                      className="h-4 w-4 rounded border-slate-300"
+                    />
+                    Test Account
+                  </label>
+                  <button
+                    type="submit"
+                    className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700"
+                  >
+                    Save
+                  </button>
+                </form>
               </div>
             ))}
           </div>

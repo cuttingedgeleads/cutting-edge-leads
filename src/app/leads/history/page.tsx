@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { getTestMode } from "@/lib/settings";
 import { NavBar } from "@/components/NavBar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
 import { Pagination } from "@/components/Pagination";
@@ -37,8 +38,19 @@ export default async function PurchaseHistoryPage({
   const pageParam = Number(params?.page ?? "1");
   const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
+  const testMode = await getTestMode();
+
+  const contractor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { name: true, businessName: true, serviceCities: true, isTestAccount: true },
+  });
+
+  const testLeadFilter = testMode
+    ? { isTestLead: contractor?.isTestAccount ?? false }
+    : { isTestLead: false };
+
   const purchasesCount = await prisma.leadUnlockRequest.count({
-    where: { contractorId: session.user.id, status: "APPROVED" },
+    where: { contractorId: session.user.id, status: "APPROVED", lead: testLeadFilter },
   });
 
   const totalPages = Math.max(1, Math.ceil(purchasesCount / PAGE_SIZE));
@@ -46,16 +58,11 @@ export default async function PurchaseHistoryPage({
   const skip = (currentPage - 1) * PAGE_SIZE;
 
   const purchases = await prisma.leadUnlockRequest.findMany({
-    where: { contractorId: session.user.id, status: "APPROVED" },
+    where: { contractorId: session.user.id, status: "APPROVED", lead: testLeadFilter },
     include: { lead: { include: { photos: true } } },
     orderBy: { approvedAt: "desc" },
     skip,
     take: PAGE_SIZE,
-  });
-
-  const contractor = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { name: true, businessName: true, serviceCities: true },
   });
 
   const allowedCities = (contractor?.serviceCities || "")
@@ -70,6 +77,10 @@ export default async function PurchaseHistoryPage({
     ? Prisma.sql`AND LOWER(l."city") IN (${Prisma.join(allowedCities)})`
     : Prisma.empty;
 
+  const testLeadClause = testMode
+    ? Prisma.sql`AND l."isTestLead" = ${contractor?.isTestAccount ?? false}`
+    : Prisma.sql`AND l."isTestLead" = false`;
+
   const availableCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
     SELECT COUNT(*)::bigint AS count
     FROM (
@@ -79,6 +90,7 @@ export default async function PurchaseHistoryPage({
         ON u."leadId" = l.id AND u.status = 'APPROVED'
       WHERE l."createdAt" >= ${cutoff}
       ${cityClause}
+      ${testLeadClause}
       AND NOT EXISTS (
         SELECT 1
         FROM "LeadUnlockRequest" u2

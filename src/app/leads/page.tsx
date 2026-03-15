@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { getTestMode } from "@/lib/settings";
 import { formatCentralDate, formatCentralTime } from "@/lib/datetime";
 import { NavBar } from "@/components/NavBar";
 import { PhotoLightbox } from "@/components/PhotoLightbox";
@@ -63,15 +64,21 @@ export default async function LeadsPage({
   const pageParam = Number(params?.page ?? "1");
   const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
 
+  const testMode = await getTestMode();
+
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, businessName: true },
+    select: { name: true, businessName: true, isTestAccount: true },
   });
 
   const paypalClientId = (process.env.PAYPAL_CLIENT_ID ?? "").trim();
 
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - 48);
+
+  const testLeadClause = testMode
+    ? Prisma.sql`AND l."isTestLead" = ${contractor?.isTestAccount ?? false}`
+    : Prisma.sql`AND l."isTestLead" = false`;
 
   const availableCountResult = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`
     SELECT COUNT(*)::bigint AS count
@@ -81,6 +88,7 @@ export default async function LeadsPage({
       LEFT JOIN "LeadUnlockRequest" u
         ON u."leadId" = l.id AND u.status = 'APPROVED'
       WHERE l."createdAt" >= ${cutoff}
+      ${testLeadClause}
       AND NOT EXISTS (
         SELECT 1
         FROM "LeadUnlockRequest" u2
@@ -107,6 +115,7 @@ export default async function LeadsPage({
         LEFT JOIN "LeadUnlockRequest" u
           ON u."leadId" = l.id AND u.status = 'APPROVED'
         WHERE l."createdAt" >= ${cutoff}
+        ${testLeadClause}
         AND NOT EXISTS (
           SELECT 1
           FROM "LeadUnlockRequest" u2

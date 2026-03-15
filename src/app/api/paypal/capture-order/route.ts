@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { capturePayPalOrder } from "@/lib/paypal";
 import { sendLeadUnlockedEmail } from "@/lib/email";
+import { getTestMode } from "@/lib/settings";
 
 function isExpired(date: Date) {
   const expiresAt = new Date(date);
@@ -20,6 +21,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const orderId = String(body.orderId || "");
     const leadId = String(body.leadId || "");
+    const testMode = await getTestMode();
+
+    const contractor = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { email: true, name: true, isTestAccount: true },
+    });
     if (!orderId || !leadId) {
       return NextResponse.json({ error: "Missing order info" }, { status: 400 });
     }
@@ -31,6 +38,14 @@ export async function POST(request: NextRequest) {
 
     if (!lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+    }
+
+    const contractorIsTest = contractor?.isTestAccount ?? false;
+    if (testMode && lead.isTestLead !== contractorIsTest) {
+      return NextResponse.json({ error: "Lead not available" }, { status: 403 });
+    }
+    if (!testMode && lead.isTestLead) {
+      return NextResponse.json({ error: "Lead not available" }, { status: 403 });
     }
 
     if (isExpired(lead.createdAt)) {
@@ -78,11 +93,6 @@ export async function POST(request: NextRequest) {
         status: "APPROVED",
         approvedAt: new Date(),
       },
-    });
-
-    const contractor = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { email: true, name: true },
     });
 
     if (contractor?.email) {
