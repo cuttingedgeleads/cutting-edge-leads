@@ -23,6 +23,7 @@ async function createContractor(formData: FormData) {
     .map((city) => sanitizeInput(city))
     .filter(Boolean)
     .join(",");
+  const phone = sanitizeInput(String(formData.get("phone") || ""));
 
   if (!name || !businessName || !email || !password) {
     return;
@@ -42,6 +43,7 @@ async function createContractor(formData: FormData) {
       passwordHash,
       role: "CONTRACTOR",
       serviceCities,
+      phone,
     },
   });
 
@@ -120,6 +122,10 @@ export default async function ContractorsPage() {
                 className="mt-1 w-full rounded-lg border px-3 py-2"
                 required
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Phone number</label>
+              <input name="phone" type="tel" className="mt-1 w-full rounded-lg border px-3 py-2" />
             </div>
             <div>
               <label className="text-sm font-medium">Temp password</label>
