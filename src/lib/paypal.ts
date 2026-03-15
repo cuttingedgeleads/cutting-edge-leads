@@ -67,9 +67,15 @@ export async function createPayPalOrder({
       ],
       payment_source: {
         paypal: {
+          experience_context: {
+            return_url: "https://www.cuttingedgeleads.net/leads",
+            cancel_url: "https://www.cuttingedgeleads.net/leads",
+          },
           attributes: {
             vault: {
               store_in_vault: "ON_SUCCESS",
+              usage_type: "MERCHANT",
+              customer_type: "CONSUMER",
             },
           },
         },
