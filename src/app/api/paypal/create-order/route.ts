@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
       select: { isTestAccount: true },
     });
-    // Card vaulting removed: PayPal/Venmo/Apple Pay only.
     if (!leadId) {
       return NextResponse.json({ error: "Missing lead id" }, { status: 400 });
     }

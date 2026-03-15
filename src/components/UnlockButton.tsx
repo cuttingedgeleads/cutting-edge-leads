@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { FUNDING, PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { useMemo, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useRouter } from "next/navigation";
 
 interface UnlockButtonProps {
@@ -10,15 +11,38 @@ interface UnlockButtonProps {
   city: string;
   price: number;
   paypalClientId: string;
+  hasSavedPaypal: boolean;
 }
 
-type CheckoutStatus = "idle" | "creating" | "processing" | "success" | "error";
+type CheckoutStatus =
+  | "idle"
+  | "creating"
+  | "sending-code"
+  | "verifying-code"
+  | "charging"
+  | "processing"
+  | "success"
+  | "error";
 
-export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: UnlockButtonProps) {
+const CODE_LENGTH = 6;
+
+export function UnlockButton({
+  leadId,
+  jobType,
+  city,
+  price,
+  paypalClientId,
+  hasSavedPaypal,
+}: UnlockButtonProps) {
   const [showCheckout, setShowCheckout] = useState(false);
   const [status, setStatus] = useState<CheckoutStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [codeDigits, setCodeDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
+  const [codeSent, setCodeSent] = useState(false);
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
+
+  const codeValue = useMemo(() => codeDigits.join(""), [codeDigits]);
 
   const createOrder = async () => {
     setStatus("creating");
@@ -81,10 +105,119 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
     }
   };
 
+  const handleSendCode = async () => {
+    setStatus("sending-code");
+    setErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/sms/send-code", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        const message = data?.error || "Unable to send verification code.";
+        setStatus("error");
+        setErrorMessage(message);
+        return;
+      }
+
+      setCodeSent(true);
+      setStatus("idle");
+      setCodeDigits(Array(CODE_LENGTH).fill(""));
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to send verification code.";
+      setStatus("error");
+      setErrorMessage(message);
+    }
+  };
+
+  const handleVerifyAndCharge = async () => {
+    const trimmedCode = codeValue.trim();
+    if (trimmedCode.length !== CODE_LENGTH) {
+      setStatus("error");
+      setErrorMessage("Enter the 6-digit verification code.");
+      return;
+    }
+
+    setStatus("verifying-code");
+    setErrorMessage(null);
+
+    try {
+      const verifyResponse = await fetch("/api/sms/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: trimmedCode }),
+      });
+      const verifyData = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        const message = verifyData?.error || "Verification failed.";
+        setStatus("error");
+        setErrorMessage(message);
+        return;
+      }
+
+      // Get the verification token from the response
+      const verificationToken = verifyData.token;
+      if (!verificationToken) {
+        setStatus("error");
+        setErrorMessage("Verification failed. Please try again.");
+        return;
+      }
+
+      setStatus("charging");
+      const chargeResponse = await fetch("/api/paypal/charge-vault", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId, verificationToken }),
+      });
+      const chargeData = await chargeResponse.json();
+      if (!chargeResponse.ok) {
+        const message = chargeData?.error || "Unable to complete payment.";
+        setStatus("error");
+        setErrorMessage(message);
+        return;
+      }
+
+      setStatus("success");
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to complete payment.";
+      setStatus("error");
+      setErrorMessage(message);
+    }
+  };
+
+  const updateDigit = (index: number, value: string) => {
+    const sanitized = value.replace(/\D/g, "");
+    if (!sanitized) {
+      const nextDigits = [...codeDigits];
+      nextDigits[index] = "";
+      setCodeDigits(nextDigits);
+      return;
+    }
+
+    const nextDigits = [...codeDigits];
+    const chars = sanitized.split("");
+    chars.slice(0, CODE_LENGTH - index).forEach((char, offset) => {
+      nextDigits[index + offset] = char;
+    });
+    setCodeDigits(nextDigits);
+
+    const nextIndex = Math.min(index + chars.length, CODE_LENGTH - 1);
+    inputRefs.current[nextIndex]?.focus();
+  };
+
+  const handleKeyDown = (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Backspace" && !codeDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
   const resetModal = () => {
     setStatus("idle");
     setErrorMessage(null);
     setShowCheckout(false);
+    setCodeSent(false);
+    setCodeDigits(Array(CODE_LENGTH).fill(""));
   };
 
   return (
@@ -117,26 +250,78 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                   <span className="font-medium">Price:</span> ${price}
                 </p>
               </div>
-              <p className="text-xs text-slate-500">
-                Pay with PayPal or Venmo.
-              </p>
+              <p className="text-xs text-slate-500">Pay with PayPal.</p>
             </div>
 
-            {paypalClientId ? (
+            {hasSavedPaypal ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                  Pay with saved PayPal. We&apos;ll text a verification code to confirm.
+                </div>
+                {!codeSent ? (
+                  <button
+                    onClick={handleSendCode}
+                    className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                    disabled={status === "sending-code"}
+                  >
+                    {status === "sending-code" ? "Sending code..." : `Unlock lead ($${price})`}
+                  </button>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-600">
+                      Enter the 6-digit code we texted you.
+                    </p>
+                    <div className="flex justify-center gap-2">
+                      {codeDigits.map((digit, index) => (
+                        <input
+                          key={index}
+                          ref={(el) => {
+                            inputRefs.current[index] = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          maxLength={CODE_LENGTH}
+                          className="h-11 w-11 rounded-md border border-slate-300 text-center text-lg"
+                          value={digit}
+                          onChange={(event) => updateDigit(index, event.target.value)}
+                          onKeyDown={(event) => handleKeyDown(index, event)}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={handleVerifyAndCharge}
+                      className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                      disabled={status === "verifying-code" || status === "charging"}
+                    >
+                      {status === "verifying-code"
+                        ? "Verifying..."
+                        : status === "charging"
+                          ? "Processing payment..."
+                          : `Verify & Pay $${price}`}
+                    </button>
+                    <button
+                      onClick={handleSendCode}
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                      disabled={status === "sending-code"}
+                    >
+                      Resend code
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : paypalClientId ? (
               <PayPalScriptProvider
                 options={{
                   clientId: paypalClientId,
                   currency: "USD",
                   intent: "capture",
                   components: "buttons,funding-eligibility",
-                  "enable-funding": "venmo",
                   "disable-funding": "card,credit,paylater",
                 }}
               >
                 <div className="space-y-2">
-                  {/* PayPal Button */}
                   <PayPalButtons
-                    fundingSource={FUNDING.PAYPAL}
                     style={{ layout: "vertical", label: "paypal" }}
                     createOrder={createOrder}
                     onApprove={(data) => handleApprove(data.orderID)}
@@ -146,24 +331,6 @@ export function UnlockButton({ leadId, jobType, city, price, paypalClientId }: U
                     }}
                     onError={(err) => {
                       console.error("PayPal checkout error", err);
-                      const errMsg = err instanceof Error ? err.message : String(err);
-                      setStatus("error");
-                      setErrorMessage(errMsg || "Checkout failed. Please try again.");
-                    }}
-                    disabled={status === "creating" || status === "processing"}
-                  />
-                  {/* Venmo Button */}
-                  <PayPalButtons
-                    fundingSource={FUNDING.VENMO}
-                    style={{ layout: "vertical" }}
-                    createOrder={createOrder}
-                    onApprove={(data) => handleApprove(data.orderID)}
-                    onCancel={() => {
-                      setStatus("idle");
-                      setErrorMessage(null);
-                    }}
-                    onError={(err) => {
-                      console.error("Venmo checkout error", err);
                       const errMsg = err instanceof Error ? err.message : String(err);
                       setStatus("error");
                       setErrorMessage(errMsg || "Checkout failed. Please try again.");

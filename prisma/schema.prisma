@@ -26,6 +26,13 @@ model User {
   passwordHash           String
   role                   Role                @default(CONTRACTOR)
   phone                  String              @default("")
+  paypalVaultId          String?
+  smsCode                String?
+  smsCodeExpiry          DateTime?
+  smsFailedAttempts      Int                 @default(0)
+  smsCodeSentAt          DateTime?
+  smsVerifiedToken       String?
+  smsVerifiedExpiry      DateTime?
   serviceCities          String              @default("")
   timezone               String              @default("America/Chicago")
   preferredContactMethod String              @default("EMAIL")

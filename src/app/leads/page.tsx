@@ -68,7 +68,7 @@ export default async function LeadsPage({
 
   const contractor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, businessName: true, isTestAccount: true },
+    select: { name: true, businessName: true, isTestAccount: true, paypalVaultId: true },
   });
 
   const paypalClientId = (process.env.PAYPAL_CLIENT_ID ?? "").trim();
@@ -205,6 +205,7 @@ export default async function LeadsPage({
                       city={lead.city}
                       price={lead.price}
                       paypalClientId={paypalClientId}
+                      hasSavedPaypal={Boolean(contractor?.paypalVaultId)}
                     />
                   )}
                 </div>

@@ -65,13 +65,70 @@ export async function createPayPalOrder({
           },
         },
       ],
-      // Card payment source removed to keep PayPal/Venmo/Apple Pay only.
+      payment_source: {
+        paypal: {
+          attributes: {
+            vault: {
+              store_in_vault: "ON_SUCCESS",
+            },
+          },
+        },
+      },
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`PayPal create order error: ${errorText}`);
+  }
+
+  return response.json();
+}
+
+export async function createPayPalVaultOrder({
+  leadId,
+  amount,
+  description,
+  vaultId,
+}: {
+  leadId: string;
+  amount: string;
+  description: string;
+  vaultId: string;
+}) {
+  const accessToken = await getPayPalAccessToken();
+  const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      intent: "CAPTURE",
+      application_context: {
+        shipping_preference: "NO_SHIPPING",
+      },
+      purchase_units: [
+        {
+          custom_id: leadId,
+          description,
+          amount: {
+            currency_code: "USD",
+            value: amount,
+          },
+        },
+      ],
+      payment_source: {
+        paypal: {
+          vault_id: vaultId,
+        },
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`PayPal vault order error: ${errorText}`);
   }
 
   return response.json();

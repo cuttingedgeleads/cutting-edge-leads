@@ -7,6 +7,7 @@ import { NavBar } from "@/components/NavBar";
 import { EnableNotificationsButton } from "@/components/EnableNotificationsButton";
 import { sanitizeInput } from "@/lib/sanitize";
 import { JOB_TYPES } from "@/lib/jobTypes";
+import { SavedPaymentSection } from "@/components/SavedPaymentSection";
 import {
   EditableCheckboxField,
   EditablePasswordSection,
@@ -239,6 +240,7 @@ export default async function ProfilePage() {
       emailNotifications: true,
       pushNotifications: true,
       isTestAccount: true,
+      paypalVaultId: true,
     },
   });
 
@@ -389,6 +391,8 @@ export default async function ProfilePage() {
             </button>
           </div>
         </section>
+
+        <SavedPaymentSection hasPaypalVault={Boolean(user?.paypalVaultId)} />
 
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div>
