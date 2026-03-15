@@ -104,6 +104,9 @@ export async function createPayPalVaultOrder({
 }) {
   const accessToken = await getPayPalAccessToken();
   
+  // Generate unique request ID for idempotency (required for vault charges)
+  const requestId = `vault-${leadId}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  
   const requestBody = {
     intent: "CAPTURE",
     application_context: {
@@ -130,13 +133,14 @@ export async function createPayPalVaultOrder({
     },
   };
   
-  console.log("Creating PayPal vault order", { leadId, amount, vaultId: vaultId.slice(0, 8) + "..." });
+  console.log("Creating PayPal vault order", { leadId, amount, vaultId: vaultId.slice(0, 8) + "...", requestId });
   
   const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
+      "PayPal-Request-Id": requestId,
     },
     body: JSON.stringify(requestBody),
   });
