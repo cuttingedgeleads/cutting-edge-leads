@@ -103,41 +103,53 @@ export async function createPayPalVaultOrder({
   vaultId: string;
 }) {
   const accessToken = await getPayPalAccessToken();
+  
+  const requestBody = {
+    intent: "CAPTURE",
+    application_context: {
+      shipping_preference: "NO_SHIPPING",
+    },
+    purchase_units: [
+      {
+        custom_id: leadId,
+        description,
+        amount: {
+          currency_code: "USD",
+          value: amount,
+        },
+      },
+    ],
+    payment_source: {
+      paypal: {
+        vault_id: vaultId,
+        stored_credential: {
+          payment_initiator: "MERCHANT",
+          payment_type: "UNSCHEDULED",
+        },
+      },
+    },
+  };
+  
+  console.log("Creating PayPal vault order", { leadId, amount, vaultId: vaultId.slice(0, 8) + "..." });
+  
   const response = await fetch(`${PAYPAL_API_BASE}/v2/checkout/orders`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      intent: "CAPTURE",
-      application_context: {
-        shipping_preference: "NO_SHIPPING",
-      },
-      purchase_units: [
-        {
-          custom_id: leadId,
-          description,
-          amount: {
-            currency_code: "USD",
-            value: amount,
-          },
-        },
-      ],
-      payment_source: {
-        paypal: {
-          vault_id: vaultId,
-        },
-      },
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error("PayPal vault order failed", { status: response.status, error: errorText });
     throw new Error(`PayPal vault order error: ${errorText}`);
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log("PayPal vault order created", { orderId: result.id, status: result.status });
+  return result;
 }
 
 export async function capturePayPalOrder(orderId: string) {

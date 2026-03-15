@@ -84,8 +84,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Payment amount mismatch" }, { status: 400 });
     }
 
+    // Extract vault ID from capture response
     const vaultId = capture?.payment_source?.paypal?.attributes?.vault?.id;
+    console.log("Vault extraction from capture", { 
+      hasPaymentSource: !!capture?.payment_source,
+      hasPaypal: !!capture?.payment_source?.paypal,
+      hasAttributes: !!capture?.payment_source?.paypal?.attributes,
+      hasVault: !!capture?.payment_source?.paypal?.attributes?.vault,
+      vaultId: vaultId ? vaultId.slice(0, 8) + "..." : null,
+      fullPaymentSource: JSON.stringify(capture?.payment_source, null, 2)
+    });
+    
     if (vaultId && vaultId !== contractor?.paypalVaultId) {
+      console.log("Saving vault ID to contractor", { contractorId: session.user.id });
       await prisma.user.update({
         where: { id: session.user.id },
         data: { paypalVaultId: vaultId },
