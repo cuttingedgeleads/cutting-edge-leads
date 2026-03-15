@@ -12,13 +12,14 @@ const normalizePhone = (value: string) => {
 
 const createClient = () => {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const apiKeySid = process.env.TWILIO_API_KEY_SID;
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
 
-  if (!accountSid || !authToken) {
+  if (!accountSid || !apiKeySid || !apiKeySecret) {
     throw new Error("Twilio credentials are missing.");
   }
 
-  return twilio(accountSid, authToken);
+  return twilio(apiKeySid, apiKeySecret, { accountSid });
 };
 
 export async function sendVerificationCode(to: string, code: string) {
