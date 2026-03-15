@@ -109,21 +109,37 @@ export async function POST(request: NextRequest) {
       vaultId: contractor.paypalVaultId,
     });
 
-    const capture = await capturePayPalOrder(order.id);
-    if (capture?.status !== "COMPLETED") {
-      console.error("PayPal vault capture returned non-completed status", {
-        orderId: order.id,
-        status: capture?.status,
-        details: capture?.details,
-      });
-      const statusDetail = capture?.status ? ` (${capture.status})` : "";
+    // Vault orders are auto-captured by PayPal - check status
+    let finalOrder = order;
+    
+    if (order.status === "COMPLETED") {
+      // Already captured by PayPal (normal for vault orders)
+      console.log("Vault order auto-captured", { orderId: order.id, status: order.status });
+    } else if (order.status === "APPROVED") {
+      // Need to capture manually
+      const capture = await capturePayPalOrder(order.id);
+      if (capture?.status !== "COMPLETED") {
+        console.error("PayPal vault capture returned non-completed status", {
+          orderId: order.id,
+          status: capture?.status,
+          details: capture?.details,
+        });
+        const statusDetail = capture?.status ? ` (${capture.status})` : "";
+        return NextResponse.json(
+          { error: `Payment not completed${statusDetail}` },
+          { status: 400 }
+        );
+      }
+      finalOrder = capture;
+    } else {
+      console.error("Unexpected vault order status", { orderId: order.id, status: order.status });
       return NextResponse.json(
-        { error: `Payment not completed${statusDetail}` },
+        { error: `Unexpected payment status: ${order.status}` },
         { status: 400 }
       );
     }
 
-    const purchaseUnit = capture.purchase_units?.[0];
+    const purchaseUnit = finalOrder.purchase_units?.[0];
     const customId = purchaseUnit?.custom_id;
     if (customId && customId !== leadId) {
       return NextResponse.json({ error: "Payment lead mismatch" }, { status: 400 });
