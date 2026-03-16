@@ -317,7 +317,7 @@ export function UnlockButton({
                     <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
                       Your PayPal account is on file. Pay instantly with your saved payment method.
                     </div>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <a
                         href="https://www.paypal.com/myaccount/home"
                         target="_blank"
@@ -340,7 +340,7 @@ export function UnlockButton({
                     ) : null}
                     <button
                       onClick={handleVerifyAndCharge}
-                      className="w-full rounded-lg bg-[#008CFF] px-4 py-3 text-base font-semibold text-white shadow-lg hover:bg-[#0077e6]"
+                      className="w-full rounded-xl bg-[#008CFF] px-4 py-4 text-lg font-bold text-white shadow-xl hover:bg-[#0077e6] transition-colors"
                       disabled={status === "verifying-code" || status === "charging"}
                     >
                       {status === "verifying-code"
