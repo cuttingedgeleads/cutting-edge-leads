@@ -317,6 +317,17 @@ export function UnlockButton({
                     <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
                       Your PayPal account is on file. Pay instantly with your saved payment method.
                     </div>
+                    <button
+                      onClick={handleVerifyAndCharge}
+                      className="w-full rounded-xl bg-[#008CFF] px-4 py-4 text-lg font-bold text-white shadow-xl hover:bg-[#0077e6] transition-colors"
+                      disabled={status === "verifying-code" || status === "charging"}
+                    >
+                      {status === "verifying-code"
+                        ? "Verifying..."
+                        : status === "charging"
+                          ? "Processing payment..."
+                          : `Verify & Pay $${price}`}
+                    </button>
                     <div className="grid grid-cols-2 gap-2">
                       <a
                         href="https://www.paypal.com/myaccount/home"
@@ -338,17 +349,6 @@ export function UnlockButton({
                     {removeStatus === "error" ? (
                       <p className="text-sm text-red-600">{removeError || "Unable to remove saved PayPal."}</p>
                     ) : null}
-                    <button
-                      onClick={handleVerifyAndCharge}
-                      className="w-full rounded-xl bg-[#008CFF] px-4 py-4 text-lg font-bold text-white shadow-xl hover:bg-[#0077e6] transition-colors"
-                      disabled={status === "verifying-code" || status === "charging"}
-                    >
-                      {status === "verifying-code"
-                        ? "Verifying..."
-                        : status === "charging"
-                          ? "Processing payment..."
-                          : `Verify & Pay $${price}`}
-                    </button>
                     <button
                       onClick={handleSendCode}
                       className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
