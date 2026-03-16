@@ -189,6 +189,11 @@ export function UnlockButton({
   };
 
   const handleRemoveSavedPaypal = async () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to remove your saved PayPal account? You'll need to re-enter your payment details for future purchases."
+    );
+    if (!confirmed) return;
+
     setRemoveStatus("removing");
     setRemoveError(null);
 
