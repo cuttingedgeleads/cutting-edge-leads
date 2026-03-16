@@ -39,6 +39,8 @@ export function UnlockButton({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [codeDigits, setCodeDigits] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [codeSent, setCodeSent] = useState(false);
+  const [removeStatus, setRemoveStatus] = useState<"idle" | "removing" | "error">("idle");
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
 
@@ -186,6 +188,29 @@ export function UnlockButton({
     }
   };
 
+  const handleRemoveSavedPaypal = async () => {
+    setRemoveStatus("removing");
+    setRemoveError(null);
+
+    try {
+      const response = await fetch("/api/contractor/remove-vault", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) {
+        const message = data?.error || "Unable to remove saved PayPal.";
+        setRemoveStatus("error");
+        setRemoveError(message);
+        return;
+      }
+
+      setRemoveStatus("idle");
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to remove saved PayPal.";
+      setRemoveStatus("error");
+      setRemoveError(message);
+    }
+  };
+
   const updateDigit = (index: number, value: string) => {
     const sanitized = value.replace(/\D/g, "");
     if (!sanitized) {
@@ -289,9 +314,33 @@ export function UnlockButton({
                         />
                       ))}
                     </div>
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                      Your PayPal account is on file. Pay instantly with your saved payment method.
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <a
+                        href="https://www.paypal.com/myaccount/home"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        Manage PayPal Account
+                      </a>
+                      <button
+                        type="button"
+                        onClick={handleRemoveSavedPaypal}
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        disabled={removeStatus === "removing"}
+                      >
+                        {removeStatus === "removing" ? "Removing..." : "Remove Saved PayPal"}
+                      </button>
+                    </div>
+                    {removeStatus === "error" ? (
+                      <p className="text-sm text-red-600">{removeError || "Unable to remove saved PayPal."}</p>
+                    ) : null}
                     <button
                       onClick={handleVerifyAndCharge}
-                      className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+                      className="w-full rounded-lg bg-[#008CFF] px-4 py-3 text-base font-semibold text-white shadow-lg hover:bg-[#0077e6]"
                       disabled={status === "verifying-code" || status === "charging"}
                     >
                       {status === "verifying-code"
