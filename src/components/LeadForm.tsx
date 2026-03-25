@@ -472,7 +472,7 @@ export function LeadForm() {
       // Only fill description if there's meaningful text left (at least 5 chars)
       const descriptionInput = document.querySelector('textarea[name="description"]') as HTMLTextAreaElement;
       if (descriptionInput) {
-        descriptionInput.value = toTitleCase(descriptionLines.trim());
+        descriptionInput.value = descriptionLines.trim();
       }
     }
 
@@ -504,7 +504,7 @@ export function LeadForm() {
         formData.set("state", normalizedState);
       }
 
-      const titleCaseFields = ["name", "description", "address", "city"];
+      const titleCaseFields = ["name", "address", "city"];
       titleCaseFields.forEach((field) => {
         const value = String(formData.get(field) || "").trim();
         if (value) {

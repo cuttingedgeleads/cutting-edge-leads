@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const zip = sanitizeInput(String(formData.get("zip") || ""));
 
     const name = rawName ? toTitleCase(rawName) : "";
-    const description = rawDescription ? toTitleCase(rawDescription) : "";
+    const description = rawDescription ? rawDescription.trim() : "";
     const address = rawAddress ? toTitleCase(rawAddress) : "";
     const city = rawCity ? toTitleCase(rawCity) : "";
     const state = normalizeState(rawState);
