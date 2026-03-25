@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactZoomPanPinchRef,
@@ -24,6 +25,9 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
   const [activeIndex, setActiveIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
+  const isDataUrl = useCallback((url: string) => url.startsWith("data:"), []);
+  const thumbnailWidth = 80;
+  const thumbnailHeight = 112;
 
   const orderedPhotos = useMemo(() => {
     const getLabel = (url: string) => {
@@ -122,9 +126,15 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
             className="focus:outline-none"
             aria-label="Open photo"
           >
-            <img
+            <Image
               src={photo.url}
               alt={photo.alt || "Lead photo"}
+              width={thumbnailWidth}
+              height={thumbnailHeight}
+              loading="lazy"
+              fetchPriority="low"
+              sizes={`${thumbnailWidth}px`}
+              unoptimized={isDataUrl(photo.url)}
               className={
                 thumbnailClassName ||
                 "h-28 w-20 rounded-lg object-cover border transition hover:opacity-90"
@@ -162,6 +172,8 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
                     <img
                       src={activePhoto.url}
                       alt={activePhoto.alt || "Lead photo"}
+                      loading="eager"
+                      decoding="async"
                       className="max-h-full max-w-full object-contain"
                       style={{ touchAction: "none" }}
                     />
