@@ -5,8 +5,8 @@ import { sendVerificationCode } from "@/lib/twilio";
 import { randomInt } from "crypto";
 
 const CODE_TTL_MS = 5 * 60 * 1000;
-const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
-const RATE_LIMIT_MAX = 3;
+const RATE_LIMIT_WINDOW_MS = 20 * 60 * 1000;
+const RATE_LIMIT_MAX = 10;
 
 const sendAttempts = new Map<string, number[]>();
 
