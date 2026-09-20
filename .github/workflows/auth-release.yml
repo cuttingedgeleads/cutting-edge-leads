@@ -1,0 +1,51 @@
+name: Authentication safety
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auth-safety-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auth-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: leads_qa
+          POSTGRES_DB: leads_auth_qa
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 55474:5432
+        options: >-
+          --health-cmd "pg_isready -U leads_qa -d leads_auth_qa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://leads_qa@127.0.0.1:55474/leads_auth_qa
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps msedge
+      - run: node tests/init-auth-db.mjs --empty-local-qa
+      - run: npm test
+      # Keep real execution results in job logs, with no artifact-storage dependency.
+      - name: Print safe gate receipt
+        if: always()
+        run: node -e "const fs=require('fs'); const p='.auth-qa/gate-result.json'; if(fs.existsSync(p)) console.log(fs.readFileSync(p,'utf8'));"

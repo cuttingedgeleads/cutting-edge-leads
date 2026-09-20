@@ -1,45 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { sanitizeInput } from "@/lib/sanitize";
-import { sendPasswordResetEmail } from "@/lib/email";
-import crypto from "crypto";
+import { headers } from "next/headers";
+import { requestReset, RESET_RESPONSE } from "@/lib/password-reset";
 
+export const dynamic = 'force-dynamic';
 async function requestPasswordReset(formData: FormData) {
   "use server";
-
-  const email = sanitizeInput(String(formData.get("email") || "")).toLowerCase();
-
-  if (!email) {
-    redirect("/forgot-password?error=missing_email");
-  }
-
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  if (user) {
-    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
-
-    const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-
-    await prisma.passwordResetToken.create({
-      data: {
-        token,
-        userId: user.id,
-        expiresAt,
-      },
-    });
-
-    const baseUrl = process.env.NEXTAUTH_URL || "https://www.cuttingedgeleads.net";
-    const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-
-    await sendPasswordResetEmail({
-      to: user.email,
-      name: user.name,
-      resetUrl,
-    });
-  }
-
+  const h = await headers();
+  // Vercel overwrites this ingress header. Other deployments share a conservative IP bucket.
+  const ip = process.env.VERCEL ? h.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() || 'unknown' : 'local-or-untrusted-proxy';
+  await requestReset(prisma, String(formData.get('email') || ''), ip);
   redirect("/forgot-password?sent=1");
 }
 
@@ -66,8 +37,9 @@ export default async function ForgotPasswordPage({
         </p>
         <form action={requestPasswordReset} className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Email</label>
+            <label htmlFor="email" className="text-sm font-medium">Email</label>
             <input
+              id="email" autoComplete="username" maxLength={254}
               name="email"
               type="email"
               className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -76,7 +48,7 @@ export default async function ForgotPasswordPage({
           </div>
           {errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
           {sent ? (
-            <p className="text-sm text-green-600">Check your email for a reset link.</p>
+            <p className="text-sm text-green-600">{RESET_RESPONSE}</p>
           ) : null}
           <button
             type="submit"

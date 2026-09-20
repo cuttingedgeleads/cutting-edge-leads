@@ -259,8 +259,10 @@ export function EditablePasswordSection({ action }: EditablePasswordSectionProps
     <div className="rounded-xl border px-4 py-3 bg-white">
       <form action={action} className="grid gap-4 sm:grid-cols-3">
         <div>
-          <label className="text-sm font-medium">Current password</label>
+          <label htmlFor="currentPassword" className="text-sm font-medium">Current password</label>
           <input
+            id="currentPassword"
+            autoComplete="current-password"
             name="currentPassword"
             type="password"
             className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -268,8 +270,10 @@ export function EditablePasswordSection({ action }: EditablePasswordSectionProps
           />
         </div>
         <div>
-          <label className="text-sm font-medium">New password</label>
+          <label htmlFor="newPassword" className="text-sm font-medium">New password</label>
           <input
+            id="newPassword"
+            autoComplete="new-password"
             name="newPassword"
             type="password"
             className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -277,8 +281,10 @@ export function EditablePasswordSection({ action }: EditablePasswordSectionProps
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Confirm password</label>
+          <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm password</label>
           <input
+            id="confirmPassword"
+            autoComplete="new-password"
             name="confirmPassword"
             type="password"
             className="mt-1 w-full rounded-lg border px-3 py-2"

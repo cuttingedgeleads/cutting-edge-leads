@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { selectResetTransport, validResetRecipient, type ResetMail, type ResetTransport } from './reset-mail-transport';
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
@@ -149,39 +150,29 @@ export async function sendLeadUnlockedEmail(options: {
   }
 }
 
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
+
 export async function sendPasswordResetEmail(options: {
   to: string;
   name?: string | null;
   resetUrl: string;
-}) {
-  console.log("[Email] sendPasswordResetEmail called for:", options.to);
-
-  if (!resend) {
-    console.log("[Email] Resend not initialized - RESEND_API_KEY missing");
-    return;
-  }
-
-  const greetingName = options.name?.trim() || "there";
-
+}, transport?: ResetTransport) {
   try {
-    const result = await resend.emails.send({
+    if (!validResetRecipient(options.to)) throw new Error();
+    const send = transport ?? selectResetTransport(process.env, resend ? (message: ResetMail) => resend.emails.send(message) : undefined);
+    const name = options.name?.trim() || "there";
+    const url = escapeHtml(options.resetUrl);
+    const result = await send({
       from: "Cutting Edge Leads <noreply@cuttingedgeleads.net>",
       to: options.to,
       subject: "Reset your Cutting Edge Leads password",
-      html: `
-        <div style="font-family: Arial, sans-serif; color: #0f172a;">
-          <h2 style="margin-bottom: 4px;">Password reset</h2>
-          <p style="margin-top: 0;">Hi ${greetingName},</p>
-          <p>We received a request to reset your password. Click the button below to set a new password.</p>
-          <p style="margin-top: 16px;">
-            <a href="${options.resetUrl}" style="background:#0f172a;color:#fff;padding:10px 16px;border-radius:8px;text-decoration:none;">Reset password</a>
-          </p>
-          <p style="margin-top: 16px; font-size: 12px; color:#64748b;">If you didn’t request this, you can safely ignore this email.</p>
-        </div>
-      `,
+      text: `Hi ${name},\nReset your password: ${options.resetUrl}\nThis link expires in one hour. If you did not request this, ignore this email.`,
+      html: `<div style="font-family:Arial,sans-serif;color:#0f172a"><h2>Password reset</h2><p>Hi ${escapeHtml(name)},</p><p><a href="${url}">Reset password</a></p><p>Or copy this link: ${url}</p><p>This link expires in one hour. If you did not request this, ignore this email.</p></div>`,
     });
-    console.log("[Email] Password reset email sent:", JSON.stringify(result));
-  } catch (error) {
-    console.error("[Email] Failed to send password reset email:", error);
+    if (result.error !== null || typeof result.data?.id !== 'string' || !result.data.id.trim()) throw new Error();
+  } catch {
+    // Do not expose provider bodies, recipients or bearer links in logs/errors.
+    throw new Error("RESET_MAIL_UNAVAILABLE");
   }
 }

@@ -1,48 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { consumeReset } from "@/lib/password-reset";
+import { validResetToken } from "@/lib/auth-policy";
+export const dynamic = 'force-dynamic';
+export const metadata = { referrer: 'no-referrer' as const };
 
 async function resetPassword(formData: FormData) {
   "use server";
-
   const token = String(formData.get("token") || "");
   const password = String(formData.get("password") || "");
-  const confirmPassword = String(formData.get("confirmPassword") || "");
-
-  if (!token) {
-    redirect("/reset-password?error=missing_token");
-  }
-
-  if (!password || !confirmPassword) {
-    redirect(`/reset-password?token=${token}&error=missing_password`);
-  }
-
-  if (password !== confirmPassword) {
-    redirect(`/reset-password?token=${token}&error=password_mismatch`);
-  }
-
-  const record = await prisma.passwordResetToken.findUnique({
-    where: { token },
-    include: { user: true },
-  });
-
-  if (!record || record.expiresAt < new Date()) {
-    redirect("/reset-password?error=invalid_token");
-  }
-
-  const passwordHash = await hash(password, 10);
-  await prisma.user.update({
-    where: { id: record.userId },
-    data: { passwordHash, failedLoginAttempts: 0, lockedUntil: null },
-  });
-
-  await prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } });
-
+  const confirmation = String(formData.get("confirmPassword") || "");
+  const error = await consumeReset(prisma, token, password, confirmation);
+  if (error) redirect(`/reset-password?${new URLSearchParams({error,...(validResetToken(token) && error !== 'invalid_token' ? {token} : {})})}`);
   redirect("/login?reset=success");
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
+  weak_password: "Use at least 8 characters, at most 72 UTF-8 bytes.",
   missing_token: "Missing reset token.",
   invalid_token: "That reset link is invalid or expired.",
   missing_password: "Please enter and confirm your new password.",
@@ -55,7 +30,7 @@ export default async function ResetPasswordPage({
   searchParams?: Promise<{ token?: string; error?: string }>;
 }) {
   const params = await searchParams;
-  const token = params?.token || "";
+  const token = validResetToken(params?.token || "") ? params!.token! : "";
   const errorKey = params?.error || "";
   const errorMessage = errorKey ? ERROR_MESSAGES[errorKey] : "";
 
@@ -69,8 +44,9 @@ export default async function ResetPasswordPage({
         <form action={resetPassword} className="space-y-4">
           <input type="hidden" name="token" value={token} />
           <div>
-            <label className="text-sm font-medium">New password</label>
+            <label htmlFor="password" className="text-sm font-medium">New password</label>
             <input
+              id="password" autoComplete="new-password" minLength={8}
               name="password"
               type="password"
               className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -78,8 +54,9 @@ export default async function ResetPasswordPage({
             />
           </div>
           <div>
-            <label className="text-sm font-medium">Confirm password</label>
+            <label htmlFor="confirmPassword" className="text-sm font-medium">Confirm password</label>
             <input
+              id="confirmPassword" autoComplete="new-password" minLength={8}
               name="confirmPassword"
               type="password"
               className="mt-1 w-full rounded-lg border px-3 py-2"

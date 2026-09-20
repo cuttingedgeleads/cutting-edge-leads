@@ -9,6 +9,7 @@ import { InstallAppButton } from "@/components/InstallAppButton";
 
 function LoginForm() {
   const [error, setError] = useState<string | null>(null);
+  const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const signupSuccess = searchParams?.get("signup") === "success";
@@ -22,29 +23,20 @@ function LoginForm() {
     const email = String(form.get("email") || "").trim();
     const password = String(form.get("password") || "");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: "/",
-    });
-
-    if (result?.error) {
-      if (result.error === "ACCOUNT_LOCKED") {
-        setError(
-          "This account has been temporarily locked due to too many failed login attempts. Try again in 10 minutes."
-        );
-      } else {
-        setError("Invalid email or password.");
+    try {
+      const result = await signIn("credentials", {
+        email, password, remember: String(remember), redirect: false, callbackUrl: "/",
+      });
+      if (result?.error || !result?.url) {
+        setError(result?.error === 'ACCOUNT_LOCKED' ? 'This account is temporarily locked. Try again in 10 minutes.' : 'Invalid email or password.');
+        return;
       }
-      setLoading(false);
-      return;
-    }
-
-    if (result?.url) {
       window.location.href = result.url;
+    } catch {
+      setError('Unable to sign in. Check your connection and try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -61,8 +53,9 @@ function LoginForm() {
       ) : null}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="text-sm font-medium">Email</label>
+          <label htmlFor="email" className="text-sm font-medium">Email</label>
           <input
+            id="email" autoComplete="username"
             name="email"
             type="email"
             className="mt-1 w-full rounded-lg border px-3 py-2"
@@ -70,15 +63,20 @@ function LoginForm() {
           />
         </div>
         <div>
-          <label className="text-sm font-medium">Password</label>
+          <label htmlFor="password" className="text-sm font-medium">Password</label>
           <input
+            id="password" autoComplete="current-password"
             name="password"
             type="password"
             className="mt-1 w-full rounded-lg border px-3 py-2"
             required
           />
         </div>
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        <label className="flex min-h-11 items-center gap-3 text-sm font-medium">
+          <input type="checkbox" name="remember" checked={remember} onChange={e => setRemember(e.target.checked)} className="h-5 w-5" />
+          Remember me for 30 days
+        </label>
+        {error ? <p role="alert" className="text-sm text-red-600">{error}</p> : null}
         <div className="flex justify-end">
           <Link href="/forgot-password" className="text-sm text-slate-600 hover:text-slate-900">
             Forgot password?
