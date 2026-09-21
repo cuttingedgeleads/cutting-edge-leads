@@ -49,8 +49,28 @@ model User {
   createdAt              DateTime            @default(now())
   unlocks                LeadUnlockRequest[] @relation("UserUnlocks")
   pushSubscriptions      PushSubscription[]
+  passwordChangedAt      DateTime?
+  authSessions           LeadAuthSession[]
   passwordResetTokens    PasswordResetToken[]
   auditLogs              AuditLog[]
+}
+
+model LeadResetAttempt {
+  id        String @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+  @@index([key, createdAt])
+}
+
+model LeadAuthSession {
+  id        String   @id
+  userId    String
+  remember  Boolean
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model AuditLog {

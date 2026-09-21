@@ -1,8 +1,12 @@
 import { precacheAndRoute } from "workbox-precaching";
+import { registerRoute } from "workbox-routing";
+import { NetworkOnly } from "workbox-strategies";
 
 const sw = self;
 
-precacheAndRoute(self.__WB_MANIFEST || []);
+const authPath = path => /^\/(?:api\/auth(?:\/|$)|login(?:\/|$)|forgot-password(?:\/|$)|reset-password(?:\/|$))/.test(path);
+registerRoute(({url}) => authPath(url.pathname), new NetworkOnly());
+precacheAndRoute((self.__WB_MANIFEST || []).filter(entry => !authPath(new URL(typeof entry === 'string' ? entry : entry.url, self.location.origin).pathname)));
 
 const BADGE_CACHE = "app-badge";
 const BADGE_URL = "/badge-count";

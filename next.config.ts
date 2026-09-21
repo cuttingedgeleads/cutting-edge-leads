@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   turbopack: {},
   async headers() {
     return [
+      ...["/login", "/forgot-password", "/reset-password", "/api/auth/:path*"].map(source => ({
+        source,
+        headers: [
+          { key: "Cache-Control", value: "private, no-store, max-age=0" },
+          { key: "Referrer-Policy", value: "no-referrer" },
+        ],
+      })),
       {
         source: "/:path*",
         headers: [
@@ -31,7 +38,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
+            value: "no-referrer",
           },
           {
             key: "Permissions-Policy",
@@ -54,6 +61,7 @@ const withPWA = nextPWA({
   register: true,
   skipWaiting: true,
   swSrc: "src/worker/sw.js",
+  publicExcludes: ["!noprecache/**/*", "!sw.js", "!worker-*.js", "!workbox-*.js", "!uploads/**/*"],
 });
 
 export default withPWA(nextConfig);

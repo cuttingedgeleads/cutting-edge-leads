@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { compare, hash } from "bcryptjs";
+import { changePassword } from "@/lib/password-reset";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getTestMode } from "@/lib/settings";
@@ -67,31 +67,9 @@ async function updatePassword(formData: FormData) {
   const newPassword = String(formData.get("newPassword") || "");
   const confirmPassword = String(formData.get("confirmPassword") || "");
 
-  if (!currentPassword || !newPassword || !confirmPassword) {
-    redirect("/profile?error=missing_password");
-  }
-
-  if (newPassword.length < 8) {
-    redirect("/profile?error=weak_password");
-  }
-
-  if (newPassword !== confirmPassword) {
-    redirect("/profile?error=password_mismatch");
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!user) redirect("/login");
-
-  const matches = await compare(currentPassword, user.passwordHash);
-  if (!matches) redirect("/profile?error=bad_password");
-
-  const passwordHash = await hash(newPassword, 10);
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { passwordHash },
-  });
-
-  redirect("/profile?success=password");
+  const error = await changePassword(prisma, session.auth, currentPassword, newPassword, confirmPassword);
+  if (error) redirect(`/profile?error=${error}`);
+  redirect("/login?reset=success");
 }
 
 async function updateBusinessName(formData: FormData) {

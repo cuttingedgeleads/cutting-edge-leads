@@ -1,130 +1,54 @@
-import type { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
-import { prisma } from "./prisma";
-import { getClientIpFromHeaders } from "@/lib/ratelimit";
-import { sanitizeInput } from "@/lib/sanitize";
-import { logAudit } from "@/lib/audit";
-
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_MINUTES = 10;
-
+import type { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { encode } from 'next-auth/jwt';
+import { prisma } from './prisma';
+import { authOrigin, REMEMBER_SECONDS } from './auth-policy';
+import { issueSession, validateAuth, revokeSession } from './auth-service';
+import { getClientIpFromHeaders } from './ratelimit';
+import { logAudit } from './audit';
+const secure = authOrigin().startsWith('https:');
+export const sessionCookieName = `${secure ? '__Secure-' : ''}next-auth.session-token`;
 export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-    maxAge: 24 * 60 * 60,
-  },
-  cookies: {
-    sessionToken: {
-      name: "__Secure-next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: true,
-      },
+  session:{strategy:'jwt',maxAge:REMEMBER_SECONDS},
+  useSecureCookies:secure,
+  cookies:{sessionToken:{name:sessionCookieName,options:{httpOnly:true,sameSite:'lax',path:'/',secure}}},
+  jwt:{async encode(params) {
+    const deadline = params.token?.deadline;
+    if (typeof deadline !== 'number' || deadline*1000<=Date.now()) throw new Error('AUTH_REVOKED');
+    return encode({...params,maxAge:Math.max(1,deadline-Math.floor(Date.now()/1000))});
+  }},
+  providers:[CredentialsProvider({
+    name:'Credentials',
+    credentials:{email:{label:'Email',type:'email'},password:{label:'Password',type:'password'},remember:{label:'Remember me',type:'text'}},
+    async authorize(credentials,req) {
+      const email=String(credentials?.email||'').trim().toLowerCase();
+      const user=await issueSession(prisma,email,String(credentials?.password||''),credentials?.remember!=='false');
+      await logAudit({action:user?'LOGIN_SUCCESS':'LOGIN_FAILED',userId:user?.id,email,ip:req.headers?getClientIpFromHeaders(new Headers(req.headers)):'unknown'});
+      return user;
+    }
+  })],
+  callbacks:{
+    async jwt({token,user}) {
+      const claims=user?{...token,sub:user.id,sid:user.sid,deadline:user.deadline,remember:user.remember}:token;
+      const valid=await validateAuth(prisma,claims);
+      if(!valid) throw new Error('AUTH_REVOKED');
+      return {...token,...valid};
     },
-  },
-  providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials, req) {
-        const emailInput = sanitizeInput(String(credentials?.email || "")).toLowerCase();
-        const password = String(credentials?.password || "");
-        const ip = req?.headers ? getClientIpFromHeaders(new Headers(req.headers)) : "unknown";
-
-        if (!emailInput || !password) {
-          await logAudit({ action: "LOGIN_FAILED", email: emailInput, ip, details: { reason: "MISSING_FIELDS" } });
-          return null;
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: emailInput },
-        });
-
-        if (!user) {
-          await logAudit({ action: "LOGIN_FAILED", email: emailInput, ip, details: { reason: "USER_NOT_FOUND" } });
-          return null;
-        }
-
-        if (user.lockedUntil && user.lockedUntil > new Date()) {
-          await logAudit({
-            action: "LOGIN_FAILED",
-            userId: user.id,
-            email: user.email,
-            ip,
-            details: { reason: "ACCOUNT_LOCKED", lockedUntil: user.lockedUntil },
-          });
-          throw new Error("ACCOUNT_LOCKED");
-        }
-
-        const isValid = await compare(password, user.passwordHash);
-        if (!isValid) {
-          const failedAttempts = user.failedLoginAttempts + 1;
-          const shouldLock = failedAttempts >= MAX_FAILED_ATTEMPTS;
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              failedLoginAttempts: Math.min(failedAttempts, MAX_FAILED_ATTEMPTS),
-              lockedUntil: shouldLock ? new Date(Date.now() + LOCK_MINUTES * 60 * 1000) : null,
-            },
-          });
-
-          await logAudit({
-            action: "LOGIN_FAILED",
-            userId: user.id,
-            email: user.email,
-            ip,
-            details: { reason: shouldLock ? "ACCOUNT_LOCKED" : "INVALID_PASSWORD", failedAttempts },
-          });
-
-          if (shouldLock) {
-            throw new Error("ACCOUNT_LOCKED");
-          }
-          return null;
-        }
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { failedLoginAttempts: 0, lockedUntil: null },
-        });
-
-        await logAudit({
-          action: "LOGIN_SUCCESS",
-          userId: user.id,
-          email: user.email,
-          ip,
-        });
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-        };
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = user.role;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role as "ADMIN" | "CONTRACTOR";
-        session.user.id = token.sub || "";
-      }
+    async session({session,token}) {
+      if(typeof token.deadline!=='number' || token.deadline*1000<=Date.now() || !token.sub) throw new Error('AUTH_REVOKED');
+      session.user={...session.user,id:token.sub,role:token.role!,name:token.name,email:token.email};
+      session.expires=new Date(token.deadline*1000).toISOString();
+      session.auth={sub:token.sub,sid:token.sid,legacyIat:token.legacyIat,deadline:token.deadline,remember:token.remember};
       return session;
     },
+    async redirect({url}) {
+      const origin=authOrigin();
+      if(url.startsWith('/') && !url.startsWith('//')) return origin+url;
+      try {if(new URL(url).origin===origin) return url;} catch {}
+      return origin;
+    }
   },
-  pages: {
-    signIn: "/login",
-  },
+  events:{async signOut({token}) {if(token) await revokeSession(prisma,token);}},
+  logger:{error(code){console.error('[Auth]',code);},warn(code){console.warn('[Auth]',code);},debug(){}},
+  pages:{signIn:'/login'},
 };
