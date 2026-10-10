@@ -6,7 +6,7 @@ import {resolve,join} from 'node:path';
 import net from 'node:net';
 const cwd=fileURLToPath(new URL('..',import.meta.url));
 const mode=process.argv[2] || 'gate';
-if(!['gate','test','build'].includes(mode)) throw new Error('Use gate, test or build; standalone unowned servers are not supported');
+if(!['gate','test','build','browser'].includes(mode)) throw new Error('Use gate, test, build or browser; standalone unowned servers are not supported');
 // Allowlist OS plumbing only. Never inherit application/provider/database/NODE_OPTIONS config.
 const env={};
 for(const [key,value] of Object.entries(process.env)) if(/^(path|systemroot|windir|comspec|temp|tmp|home|userprofile|localappdata|appdata|programfiles|programfiles\(x86\)|systemdrive|pathext)$/i.test(key)) env[key]=value;
@@ -37,13 +37,13 @@ const snapshots=new Map(generated.map(x=>[x,readFileSync(join(cwd,'public',x))])
 try {
  if(await portOpen()) throw new Error('Port 3100 occupied; will not stop or reuse an unowned server');
  await run('generate',['node_modules/prisma/build/index.js','generate']);
- if(mode!=='build')await run('aggregate',testArgs(readdirSync(join(cwd,'tests')).filter(x=>/^auth-.*\.test\.(ts|mjs)$/.test(x)&&x!=='auth-http.test.ts').map(x=>'tests/'+x)));
+ if(mode==='gate'||mode==='test')await run('aggregate',testArgs(readdirSync(join(cwd,'tests')).filter(x=>/^auth-.*\.test\.(ts|mjs)$/.test(x)&&x!=='auth-http.test.ts').map(x=>'tests/'+x)));
  await run('tsc',['node_modules/typescript/bin/tsc','--noEmit']);
  if(mode!=='test') {
-  await run('build',['node_modules/next/dist/bin/next','build','--webpack']);
-  if(mode==='gate') {
+  if(mode!=='browser')await run('build',['node_modules/next/dist/bin/next','build','--webpack']);
+  if(mode==='gate'||mode==='browser') {
    server=launch('server',['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1','--port','3100']);report.server={pid:server.child.pid,command:'next start --hostname 127.0.0.1 --port 3100'};
-   await ready();await run('http-browser',testArgs(['tests/auth-http.test.ts']));
+   await ready();await run('http-browser',testArgs(mode==='browser'?['tests/interaction-http.test.ts']:['tests/auth-http.test.ts','tests/interaction-http.test.ts']));
   }
  }
  if(failed)throw new Error('interrupted');report.status='passed';

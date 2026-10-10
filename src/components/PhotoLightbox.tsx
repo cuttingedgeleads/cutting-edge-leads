@@ -146,6 +146,7 @@ export function PhotoLightbox({ photos, thumbnailClassName, className }: PhotoLi
 
       {isOpen ? (
         <div
+          role="dialog" aria-modal="true" aria-label="Lead photos"
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/80 px-4 py-6 touch-none"
           onClick={() => setIsOpen(false)}
         >

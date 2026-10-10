@@ -77,7 +77,7 @@ export function EnableNotificationsButton() {
       </div>
 
       {isHelping ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div role="dialog" aria-modal="true" aria-label="Enable iOS Notifications" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-lg font-semibold">Enable iOS Notifications</h2>
