@@ -88,6 +88,8 @@ export function LeadForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const photoInputRef = useRef<LeadPhotoInputRef>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitting = useRef(false);
+  const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
   const [validationMessage, setValidationMessage] = useState("");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -215,7 +217,6 @@ export function LeadForm() {
         descriptionInput.value = commentsOnly;
       }
 
-      setQuickPasteText("");
       return;
     }
 
@@ -476,12 +477,14 @@ export function LeadForm() {
       }
     }
 
-    // Clear the quick paste textarea
-    setQuickPasteText("");
+    // Keep the pasted source visible so it can be corrected or parsed again.
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
+    setSuccess("");
     setIsSubmitting(true);
     setError("");
     setValidationMessage("");
@@ -606,6 +609,8 @@ export function LeadForm() {
       // Step 5: Success - refresh
       photoInputRef.current?.clear();
       form.reset();
+      setQuickPasteText("");
+      setSuccess("Lead published successfully.");
       setValidationMessage("");
       setValidationErrors([]);
       router.refresh();
@@ -613,6 +618,7 @@ export function LeadForm() {
       console.error("Submit error:", err);
       setError("Unexpected error: " + (err instanceof Error ? err.message : String(err)));
     } finally {
+      submitting.current = false;
       setIsSubmitting(false);
     }
   }
@@ -621,9 +627,11 @@ export function LeadForm() {
     <form
       ref={formRef}
       onSubmit={handleSubmit}
+      aria-busy={isSubmitting}
       noValidate
       className="grid gap-4 sm:grid-cols-2"
     >
+      {success ? <p role="status" className="sm:col-span-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{success}</p> : null}
       {/* Quick Paste Section */}
       <div className="sm:col-span-2 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <label className="text-blue-900">
@@ -636,9 +644,12 @@ export function LeadForm() {
           value={quickPasteText}
           onChange={(e) => setQuickPasteText(e.target.value)}
           onPaste={(e) => {
-            // Small delay to ensure paste content is in textarea
+            // React clears currentTarget after dispatch; retain the DOM element.
+            const input = e.currentTarget;
             setTimeout(() => {
-              parseQuickPaste(e.currentTarget.value);
+              if (!input.isConnected) return;
+              setQuickPasteText(input.value);
+              parseQuickPaste(input.value);
             }, 10);
           }}
           className="mt-2 w-full rounded-lg border border-blue-300 px-3 py-2 text-sm"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import { useRouter } from "next/navigation";
@@ -43,10 +43,19 @@ export function UnlockButton({
   const [removeError, setRemoveError] = useState<string | null>(null);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const router = useRouter();
+  const actionInFlight = useRef(false);
+  const [savedPaypalRemoved, setSavedPaypalRemoved] = useState(false);
+  const busy = ["creating", "sending-code", "verifying-code", "charging", "processing"].includes(status) || removeStatus === "removing";
+  const actionsDisabled = busy || status === "success";
+  useEffect(() => {
+    if (codeSent) inputRefs.current[0]?.focus();
+  }, [codeSent]);
 
   const codeValue = useMemo(() => codeDigits.join(""), [codeDigits]);
 
   const createOrder = async () => {
+    if (actionInFlight.current || status === "success") throw new Error("Checkout is already in progress.");
+    actionInFlight.current = true;
     setStatus("creating");
     setErrorMessage(null);
 
@@ -74,10 +83,14 @@ export function UnlockButton({
       setStatus("error");
       setErrorMessage(message);
       throw error;
+    } finally {
+      actionInFlight.current = false;
     }
   };
 
   const handleApprove = async (orderId: string) => {
+    if (actionInFlight.current || status === "success") return;
+    actionInFlight.current = true;
     setStatus("processing");
     setErrorMessage(null);
 
@@ -104,10 +117,14 @@ export function UnlockButton({
       console.error("PayPal capture exception", error);
       setStatus("error");
       setErrorMessage(message);
+    } finally {
+      actionInFlight.current = false;
     }
   };
 
   const handleSendCode = async () => {
+    if (actionInFlight.current || status === "success") return;
+    actionInFlight.current = true;
     setStatus("sending-code");
     setErrorMessage(null);
 
@@ -129,10 +146,13 @@ export function UnlockButton({
       const message = error instanceof Error ? error.message : "Unable to send verification code.";
       setStatus("error");
       setErrorMessage(message);
+    } finally {
+      actionInFlight.current = false;
     }
   };
 
   const handleVerifyAndCharge = async () => {
+    if (actionInFlight.current || status === "success") return;
     const trimmedCode = codeValue.trim();
     if (trimmedCode.length !== CODE_LENGTH) {
       setStatus("error");
@@ -140,6 +160,7 @@ export function UnlockButton({
       return;
     }
 
+    actionInFlight.current = true;
     setStatus("verifying-code");
     setErrorMessage(null);
 
@@ -185,15 +206,19 @@ export function UnlockButton({
       const message = error instanceof Error ? error.message : "Unable to complete payment.";
       setStatus("error");
       setErrorMessage(message);
+    } finally {
+      actionInFlight.current = false;
     }
   };
 
   const handleRemoveSavedPaypal = async () => {
+    if (actionInFlight.current || status === "success") return;
     const confirmed = window.confirm(
       "Are you sure you want to remove your saved PayPal account? You'll need to re-enter your payment details for future purchases."
     );
     if (!confirmed) return;
 
+    actionInFlight.current = true;
     setRemoveStatus("removing");
     setRemoveError(null);
 
@@ -207,12 +232,19 @@ export function UnlockButton({
         return;
       }
 
+      setSavedPaypalRemoved(true);
+      setCodeSent(false);
+      setCodeDigits(Array(CODE_LENGTH).fill(""));
+      setStatus("idle");
+      setErrorMessage(null);
       setRemoveStatus("idle");
       router.refresh();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to remove saved PayPal.";
       setRemoveStatus("error");
       setRemoveError(message);
+    } finally {
+      actionInFlight.current = false;
     }
   };
 
@@ -243,7 +275,8 @@ export function UnlockButton({
   };
 
   const resetModal = () => {
-    setStatus("idle");
+    if (actionInFlight.current) return;
+    if (status !== "success") setStatus("idle");
     setErrorMessage(null);
     setShowCheckout(false);
     setCodeSent(false);
@@ -254,13 +287,14 @@ export function UnlockButton({
     <>
       <button
         onClick={() => setShowCheckout(true)}
+        disabled={actionsDisabled}
         className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm hover:bg-slate-800 transition-colors"
       >
-        Unlock lead
+        {status === "success" ? "Lead unlocked" : "Unlock lead"}
       </button>
 
       {showCheckout && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto overscroll-contain touch-pan-y">
+        <div role="dialog" aria-modal="true" aria-label="Unlock this lead" aria-busy={busy} className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto overscroll-contain touch-pan-y">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4 max-h-[85vh] overflow-y-auto overscroll-contain touch-pan-y">
             <div className="space-y-1">
               <h3 className="text-lg font-semibold">Unlock this lead</h3>
@@ -283,7 +317,7 @@ export function UnlockButton({
               <p className="text-xs text-slate-500">Pay with PayPal.</p>
             </div>
 
-            {hasSavedPaypal ? (
+            {hasSavedPaypal && !savedPaypalRemoved ? (
               <div className="space-y-3">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                   Pay with saved PayPal. We&apos;ll text a verification code to confirm.
@@ -292,7 +326,7 @@ export function UnlockButton({
                   <button
                     onClick={handleSendCode}
                     className="w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-                    disabled={status === "sending-code"}
+                    disabled={actionsDisabled}
                   >
                     {status === "sending-code" ? "Sending code..." : `Unlock lead ($${price})`}
                   </button>
@@ -309,10 +343,12 @@ export function UnlockButton({
                             inputRefs.current[index] = el;
                           }}
                           type="text"
+                          aria-label={`Verification digit ${index + 1}`}
+                          disabled={actionsDisabled}
                           inputMode="numeric"
                           autoComplete="one-time-code"
                           maxLength={CODE_LENGTH}
-                          className="h-11 w-11 rounded-md border border-slate-300 text-center text-lg"
+                          className="h-11 min-w-0 w-full max-w-11 flex-1 rounded-md border border-slate-300 text-center text-lg"
                           value={digit}
                           onChange={(event) => updateDigit(index, event.target.value)}
                           onKeyDown={(event) => handleKeyDown(index, event)}
@@ -325,7 +361,7 @@ export function UnlockButton({
                     <button
                       onClick={handleVerifyAndCharge}
                       className="w-full rounded-xl bg-[#008CFF] px-4 py-4 text-lg font-bold text-white shadow-xl hover:bg-[#0077e6] transition-colors"
-                      disabled={status === "verifying-code" || status === "charging"}
+                      disabled={actionsDisabled}
                     >
                       {status === "verifying-code"
                         ? "Verifying..."
@@ -346,7 +382,7 @@ export function UnlockButton({
                         type="button"
                         onClick={handleRemoveSavedPaypal}
                         className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        disabled={removeStatus === "removing"}
+                        disabled={actionsDisabled}
                       >
                         {removeStatus === "removing" ? "Removing..." : "Remove Saved PayPal"}
                       </button>
@@ -357,7 +393,7 @@ export function UnlockButton({
                     <button
                       onClick={handleSendCode}
                       className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                      disabled={status === "sending-code"}
+                      disabled={actionsDisabled}
                     >
                       Resend code
                     </button>
@@ -389,7 +425,7 @@ export function UnlockButton({
                       setStatus("error");
                       setErrorMessage(errMsg || "Checkout failed. Please try again.");
                     }}
-                    disabled={status === "creating" || status === "processing"}
+                    disabled={actionsDisabled}
                   />
                 </div>
               </PayPalScriptProvider>
@@ -408,12 +444,13 @@ export function UnlockButton({
               </p>
             ) : null}
             {status === "error" ? (
-              <p className="text-sm text-red-600">{errorMessage || "Payment failed."}</p>
+              <p role="alert" className="text-sm text-red-600">{errorMessage || "Payment failed."}</p>
             ) : null}
 
             <div className="flex gap-3 justify-end">
               <button
                 onClick={resetModal}
+                disabled={busy}
                 className="rounded-lg border border-slate-300 px-4 py-2 text-sm hover:bg-slate-50 transition-colors"
               >
                 {status === "success" ? "Close" : "Cancel"}

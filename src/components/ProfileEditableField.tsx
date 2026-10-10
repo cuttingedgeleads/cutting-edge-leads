@@ -1,6 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
+
+function SaveActions({ onCancel }: { onCancel: () => void }) {
+  const { pending } = useFormStatus();
+  return <>
+    <button type="submit" disabled={pending} aria-busy={pending} className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium disabled:opacity-60">
+      {pending ? "Saving…" : "Save"}
+    </button>
+    <button type="button" disabled={pending} onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-60">Cancel</button>
+  </>;
+}
 
 type EditableFieldProps = {
   label: string;
@@ -62,16 +73,7 @@ export function EditableTextField({
         />
         {description ? <p className="text-xs text-slate-500">{description}</p> : null}
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-          >
-            Cancel
-          </button>
+          <SaveActions onCancel={() => setIsEditing(false)} />
         </div>
       </form>
     </div>
@@ -142,16 +144,7 @@ export function EditableSelectField({
         </select>
         {description ? <p className="text-xs text-slate-500">{description}</p> : null}
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-          >
-            Cancel
-          </button>
+          <SaveActions onCancel={() => setIsEditing(false)} />
         </div>
       </form>
     </div>
@@ -210,16 +203,7 @@ export function EditableCheckboxField({
           {description ? <p className="text-xs text-slate-500">{description}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-          >
-            Cancel
-          </button>
+          <SaveActions onCancel={() => setIsEditing(false)} />
         </div>
       </form>
     </div>
@@ -292,16 +276,7 @@ export function EditablePasswordSection({ action }: EditablePasswordSectionProps
           />
         </div>
         <div className="sm:col-span-3 flex flex-wrap gap-2">
-          <button className="rounded-lg bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setIsEditing(false)}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
-          >
-            Cancel
-          </button>
+          <SaveActions onCancel={() => setIsEditing(false)} />
         </div>
       </form>
     </div>

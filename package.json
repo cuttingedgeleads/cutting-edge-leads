@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node tests/run-auth-qa.mjs gate",
+    "test:interactions": "node tests/interaction-browser.mjs",
+    "test:interactions:http": "node tests/run-auth-qa.mjs browser",
     "test:auth": "node tests/run-auth-qa.mjs gate",
     "test:auth:unit": "node tests/run-auth-qa.mjs test",
     "postinstall": "prisma generate"

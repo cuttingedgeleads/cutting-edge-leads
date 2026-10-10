@@ -107,7 +107,7 @@ export function EditLeadButton({ lead }: { lead: EditableLead }) {
         Edit
       </button>
       {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
+        <div role="dialog" aria-modal="true" aria-label="Edit lead" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
           <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Edit lead</h3>
