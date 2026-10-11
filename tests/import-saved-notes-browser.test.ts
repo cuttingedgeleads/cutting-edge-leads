@@ -24,17 +24,19 @@ for(const [name,engine] of Object.entries({chromium,webkit}))for(const copiedSou
   await context.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
   const page=await context.newPage();page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(45000);
   const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
-  await page.goto(origin+'/login',{waitUntil:'domcontentloaded'});
+  // Settle owned-origin scripts/session reads before intentional document navigation.
+  // WebKit otherwise reports canceled old-document requests as page errors.
+  await page.goto(origin+'/login',{waitUntil:'networkidle'});
   await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Password',{exact:true}).fill(password);
-  await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL('**/admin/leads',{waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL('**/admin/leads',{waitUntil:'networkidle'});
   const reviewed={name:'Reviewed Notes',email:'reviewed@example.invalid',phone:'5550105678',address:copiedSourceAddress?source.formattedAddress:'456 Reviewed Street, Apt 4',city:'Kenner',state:'LA',zip:'70065',description:'',jobType:'',price:'',unlockLimit:'2'};
   assert.equal((await context.request.post(detail,{headers:{origin},data:{version:0,data:reviewed}})).status(),200);
   const saved=await db.studioImport.findUniqueOrThrow({where:{id:importId}});assert.equal(saved.version,1);assert.equal(saved.status,'saved');
   // NextAuth may log a canceled session request during navigation; that endpoint
   // is telemetry, not a business-data mutation. Every other unsafe request fails.
   const mutations:string[]=[];page.on('request',request=>{const path=new URL(request.url()).pathname;if(!['GET','HEAD','OPTIONS'].includes(request.method())&&path!=='/api/auth/_log')mutations.push(path);});
-  await page.goto(origin+'/admin/imports/'+importId,{waitUntil:'domcontentloaded'});
-  await page.waitForURL('**/admin/leads?importId='+importId,{waitUntil:'domcontentloaded'});
+  await page.goto(origin+'/admin/imports/'+importId,{waitUntil:'networkidle'});
+  await page.waitForURL('**/admin/leads?importId='+importId,{waitUntil:'networkidle'});
   await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('form [name=name]')?.value==='Reviewed Notes');
   const notes=[source.inquiryNotes,source.estimatorNotes,source.salesNotes].join('\n\n');
   const description=page.locator('form [name=description]');assert.equal(await description.inputValue(),notes);
@@ -45,13 +47,14 @@ for(const [name,engine] of Object.entries({chromium,webkit}))for(const copiedSou
   // Explicit clearing while editing must survive an ordinary background refresh.
   await description.fill('');const address=page.locator('form [name=address]');await address.fill('901 Active Street, Apt 2');const refreshed=page.waitForResponse(r=>r.url()===detail&&r.request().method()==='GET');
   await page.evaluate(()=>window.dispatchEvent(new Event('focus')));const refreshResponse=await refreshed;assert.equal(refreshResponse.status(),200);await refreshResponse.finished();
+  await page.waitForLoadState('networkidle');
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   assert.equal(await description.inputValue(),'');assert.equal(await address.inputValue(),'901 Active Street, Apt 2');assert.deepEqual(await db.studioImport.findUniqueOrThrow({where:{id:importId}}),saved);
   // A nonempty saved description remains authoritative on an explicit reopen.
   const edited={...reviewed,address:'456 Reviewed Street, Apt 4',description:'Human-reviewed description\nKeep verbatim.'};
   assert.equal((await context.request.post(detail,{headers:{origin},data:{version:1,data:edited}})).status(),200);
   const editedSaved=await db.studioImport.findUniqueOrThrow({where:{id:importId}});
-  await page.goto(origin+'/admin/imports',{waitUntil:'domcontentloaded'});
+  await page.goto(origin+'/admin/imports',{waitUntil:'networkidle'});
   await page.getByRole('link',{name:'Create lead',exact:true}).click();
   await page.waitForFunction(expected=>document.querySelector<HTMLTextAreaElement>('form [name=description]')?.value===expected,edited.description);
   assert.equal(await address.inputValue(),edited.address);assert.deepEqual(await db.studioImport.findUniqueOrThrow({where:{id:importId}}),editedSaved);
