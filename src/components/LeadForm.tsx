@@ -740,7 +740,6 @@ export function LeadForm({importRequest}:{importRequest?:{id:string;version:numb
           className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("unlockLimit") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         >
-          {importRequest && <option value="">Select unlock limit</option>}
           <option value="1">1 contractor</option>
           <option value="2">2 contractors</option>
           <option value="3">3 contractors</option>
@@ -757,9 +756,9 @@ export function LeadForm({importRequest}:{importRequest?:{id:string;version:numb
       </div>
       <div className="sm:col-span-2">
         <label className="text-sm font-medium">Street address</label>
-        {importRequest ? <input name="address" className="mt-1 w-full rounded-lg border px-3 py-2" required/> : <AddressAutocomplete
+        <AddressAutocomplete
           className={fieldHasError("address") ? "border-red-500 ring-1 ring-red-500" : ""}
-        />}
+        />
       </div>
       <div>
         <label className="text-sm font-medium">City</label>

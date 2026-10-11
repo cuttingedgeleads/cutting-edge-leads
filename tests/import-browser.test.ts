@@ -19,7 +19,7 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  const db=new PrismaClient(),password='Synthetic-only-password-123!';let browser:Browser|undefined,userId:string|undefined;const normalLeadIds:string[]=[];
  try{
  const user=await db.user.create({data:{email,name:'Synthetic Admin',passwordHash:await bcrypt.hash(password,4),role:'ADMIN'}});userId=user.id;
- const p={version:1,source:'command-studio',environment:'qa',transferId:randomUUID(),sourceRecordId:randomUUID(),sourceRevision:'',sourceActor:'',customerName:'Synthetic Person',customerPhone:'5550101234',customerEmail:'synthetic@example.invalid',address:'123 Synthetic Street',formattedAddress:'',city:'',state:'',postalCode:'',inquiryNotes:'PRIVATE synthetic context',estimatorNotes:'Private estimator context',salesNotes:'Private sales context',sourcePhotoCount:0};
+ const p={version:1,source:'command-studio',environment:'qa',transferId:randomUUID(),sourceRecordId:randomUUID(),sourceRevision:'',sourceActor:'',customerName:'Synthetic Person',customerPhone:'5550101234',customerEmail:'synthetic@example.invalid',address:'123 Synthetic Street, Metairie',formattedAddress:'123 Synthetic Street, Metairie, LA 70001, USA',city:'',state:'LA',postalCode:'70001',inquiryNotes:'PRIVATE synthetic context',estimatorNotes:'Private estimator context',salesNotes:'Private sales context',sourcePhotoCount:0};
  const raw=JSON.stringify(p),timestamp=String(Math.floor(Date.now()/1000));
  const signed=(body=raw,ts=timestamp)=>({'x-studio-timestamp':ts,'x-studio-signature':createHmac('sha256',process.env.STUDIO_IMPORT_SECRET!).update(ts+'.'+body).digest('hex')});
  const intake=origin+'/api/integrations/studio/imports';
@@ -50,12 +50,22 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  const response=await context.request.get(origin+detail);assert.equal(response.status(),200);assert.match(response.headers()['cache-control'],/no-store/);assert.equal(response.headers()['x-content-type-options'],'nosniff');
  assert.equal((await context.request.post(origin+detail,{headers:{origin:'https://unsafe.invalid'},data:{}})).status(),403);
  assert.equal((await fetch(origin+detail)).status,404);
- for(const field of ['city','description','price','jobType','unlockLimit'])assert.equal(await page.locator(`form [name=${field}]`).inputValue(),'');
+ for(const field of ['price','jobType'])assert.equal(await page.locator(`form [name=${field}]`).inputValue(),'');
+ const expectedNotes=[p.inquiryNotes,p.estimatorNotes,p.salesNotes].join('\n\n');
+ assert.equal(await page.locator('form [name=description]').inputValue(),expectedNotes);
+ assert.equal(await page.locator('form [name=unlockLimit]').inputValue(),'1');
+ assert.equal(await page.locator('form [name=address]').inputValue(),'123 Synthetic Street');
+ assert.equal(await page.locator('form [name=city]').inputValue(),'Metairie');
+ assert.equal(await page.locator('aside').count(),0);
+ assert.equal(await page.getByText(/Private Studio information|photos remain in Studio|Review the imported|Nothing is published/).count(),0);
+ assert.deepEqual(await page.locator('nav a[href^="/admin/"]').evaluateAll(nodes=>nodes.map(n=>n.getAttribute('href'))),['/admin/leads','/admin/active-leads','/admin/contractors','/admin/purchased-leads','/admin/expired-leads','/admin/imports']);
+ const formShape=()=>page.locator('form').evaluate(form=>Array.from(form.querySelectorAll('input,textarea,select,button')).map(e=>({tag:e.tagName,name:e.getAttribute('name'),type:e.getAttribute('type'),options:e instanceof HTMLSelectElement?Array.from(e.options).map(o=>[o.value,o.text]):undefined})));
+ const importedShape=await formShape();
  await capture(page,name,'create-import');
  const before=await db.studioImport.findUniqueOrThrow({where:{id:receipt.importId}});
  const mutations:string[]=[];
  page.on('request',request=>{if(request.method()==='POST'&&/\/api\/(admin\/imports|leads\/create)/.test(new URL(request.url()).pathname))mutations.push(request.url());});
- await page.getByRole('link',{name:'Back to Import',exact:true}).click();
+ await page.locator('nav a[href="/admin/imports"]').click();
  const create=page.getByRole('link',{name:'Create lead',exact:true});await create.waitFor();
  for(const label of ['Waiting','Saved requests','Published'])assert.equal(await page.getByRole('button',{name:label,exact:true}).count(),0);
  assert.equal(await create.count(),1);
@@ -67,8 +77,8 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  assert.equal(new URL(page.url()).searchParams.get('importId'),receipt.importId);
  assert.deepEqual(await db.studioImport.findUniqueOrThrow({where:{id:receipt.importId}}),before);
  assert.equal(await db.lead.count(),0);assert.deepEqual(mutations,[],'Create lead only navigates and prefills');
- for(const [field,value] of Object.entries({name:p.customerName,email:p.customerEmail,phone:p.customerPhone,address:p.address}))assert.equal(await page.locator(`form [name=${field}]`).inputValue(),value);
- for(const note of [p.inquiryNotes,p.estimatorNotes,p.salesNotes])assert.ok((await page.locator('aside').innerText()).includes(note));
+ for(const [field,value] of Object.entries({name:p.customerName,email:p.customerEmail,phone:p.customerPhone,address:'123 Synthetic Street'}))assert.equal(await page.locator(`form [name=${field}]`).inputValue(),value);
+ assert.equal(await page.locator('form [name=description]').inputValue(),expectedNotes);assert.equal(await page.locator('aside').count(),0);
  await publish.click();await page.getByText(/Please fill out the following fields:/).waitFor();assert.equal(await db.lead.count(),0);
  // A transient background read preserves the same dirty form, not just its text.
  await page.locator('form [name=description]').fill('Unsaved human work');await page.locator('form [name=description]').evaluate(e=>e.setAttribute('data-survival','same-editor'));
@@ -86,7 +96,7 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  const record=await db.studioImport.findUniqueOrThrow({where:{id:receipt.importId}});assert.ok(record.leadId);assert.equal(record.version,1);assert.equal(record.originalPayload,raw);assert.equal((await db.lead.findUniqueOrThrow({where:{id:record.leadId!}})).description,'Human public description');
  const repeats=await Promise.all(Array.from({length:3},()=>context.request.post(origin+'/api/leads/create',{headers:{origin},multipart:{importId:receipt.importId,importVersion:'0'}})));for(const r of repeats){assert.equal(r.status(),200);assert.equal((await r.json()).leadId,record.leadId);}assert.equal(await db.lead.count(),1);
  await capture(page,name,'created');
- await page.getByRole('link',{name:'Back to Import',exact:true}).click();await page.getByText('No imports to create.').waitFor();assert.equal(await create.count(),0);
+ await page.locator('nav a[href="/admin/imports"]').click();await page.getByText('No imports to create.').waitFor();assert.equal(await create.count(),0);
  // Retain previously saved requests in the same simple queue. Legacy private
  // save/replay stays supported, without adding that step to the new UI.
  const p2={...p,transferId:randomUUID(),sourceRecordId:randomUUID(),customerName:'Second Import'};
@@ -114,16 +124,22 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  await page.route('**/api/leads/create',async route=>{const [a,b]=await Promise.all([route.fetch(),context.request.post(origin+'/api/leads/create',{headers:route.request().headers(),data:route.request().postDataBuffer()!})]);assert.equal(a.status(),200);assert.equal(b.status(),200);assert.equal((await a.json()).leadId,(await b.json()).leadId);assert.match(a.headers()['cache-control'],/no-store/);await route.fulfill({response:a});});
  await publish.click();await page.getByText(/This lead has already been created/).waitFor();await page.unroute('**/api/leads/create');assert.equal(await db.lead.count(),2);
 
+ // A fresh imported draft must disappear when this account loses admin access.
+ const p3={...p,transferId:randomUUID(),sourceRecordId:randomUUID(),customerName:'Revocation Draft'};
+ const raw3=JSON.stringify(p3),third=await(await fetch(intake,{method:'POST',headers:signed(raw3),body:raw3})).json();
+ await page.goto(origin+'/admin/leads?importId='+third.importId,{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('input[name=name]')?.value==='Revocation Draft');
+ assert.equal(await page.locator('form [name=description]').inputValue(),expectedNotes);
  await db.user.update({where:{id:user.id},data:{role:'CONTRACTOR'}});
  for(const path of [detail,'/api/admin/imports','/api/admin/imports/count']){const denied=await context.request.get(origin+path);assert.equal(denied.status(),404);assert.match(denied.headers()['cache-control'],/no-store/);}
  assert.equal((await context.request.post(origin+detail,{headers:{origin},data:{version:1,data:saved.reviewedData}})).status(),404);
  const deniedPublish=await context.request.post(origin+'/api/leads/create',{headers:{origin},multipart:{importId:receipt.importId,importVersion:'1'}});assert.ok([401,404].includes(deniedPublish.status()));
- await page.evaluate(()=>window.dispatchEvent(new Event('imports-changed')));await page.getByText('PRIVATE synthetic context',{exact:false}).waitFor({state:'hidden'});assert.equal(await page.getByRole('heading',{name:'Private Studio information'}).count(),0);
+ await page.evaluate(()=>window.dispatchEvent(new Event('imports-changed')));await page.locator('form [name=description]').waitFor({state:'hidden'});assert.equal(await page.getByRole('heading',{name:'Private Studio information'}).count(),0);
  await db.user.update({where:{id:user.id},data:{role:'ADMIN'}});
  await page.goto(origin+'/admin/leads',{waitUntil:'domcontentloaded'});await page.getByRole('button',{name:'Publish lead',exact:true}).waitFor();assert.equal(await page.locator('input[name=name]').inputValue(),'');await page.screenshot({path:`.handoff-qa/${name}-normal-create.png`,fullPage:true});
- assert.equal(await page.locator('select[name=unlockLimit]').inputValue(),'1');assert.equal(await page.locator('input[name=importId]').count(),0);
+ assert.equal(await page.locator('select[name=unlockLimit]').inputValue(),'1');assert.equal(await page.locator('input[name=importId]').count(),0);assert.deepEqual(await formShape(),importedShape,'Imported and ordinary Create Lead use identical fields and options');
  for(const [field,value] of Object.entries({name:'Synthetic Normal',email,phone:'5550101234',address:'456 Synthetic Street',city:'Synthetic',state:'LA',zip:'70000',price:'12',description:'Synthetic normal form regression fixture'}))await page.locator(`form [name=${field}]`).fill(value);
- await page.locator('select[name=jobType]').selectOption({index:1});const normalResponse=page.waitForResponse(r=>r.url()===origin+'/api/leads/create'&&r.request().method()==='POST');await page.getByRole('button',{name:'Publish lead',exact:true}).click();const normal=await normalResponse;assert.equal(normal.status(),200);const normalResult=await normal.json();normalLeadIds.push(normalResult.leadId);assert.equal(await db.lead.count(),3);assert.equal(await db.studioImport.count({where:{recipientId:user.id}}),2);await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('input[name=name]')?.value==='');
+ await page.locator('select[name=jobType]').selectOption({index:1});const normalResponse=page.waitForResponse(r=>r.url()===origin+'/api/leads/create'&&r.request().method()==='POST');await page.getByRole('button',{name:'Publish lead',exact:true}).click();const normal=await normalResponse;assert.equal(normal.status(),200);const normalResult=await normal.json();normalLeadIds.push(normalResult.leadId);assert.equal(await db.lead.count(),3);assert.equal(await db.studioImport.count({where:{recipientId:user.id}}),3);await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('input[name=name]')?.value==='');
  console.log(name,'acceptance complete');
  }finally{try{await browser?.close();}finally{try{if(userId){const rows=await db.studioImport.findMany({where:{recipientId:userId}});const leads=[...normalLeadIds,...rows.flatMap(r=>r.leadId?[r.leadId]:[])];await db.studioImport.deleteMany({where:{recipientId:userId}});await db.leadPhoto.deleteMany({where:{leadId:{in:leads}}});await db.lead.deleteMany({where:{id:{in:leads}}});await db.leadAuthSession.deleteMany({where:{userId:userId}});await db.auditLog.deleteMany({where:{email,userId}});await db.user.delete({where:{id:userId}});}}finally{await db.$disconnect();}}}
 });

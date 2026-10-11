@@ -20,7 +20,6 @@ export function ImportInbox() {
   return (
     <section className="space-y-4">
       <h1 className="text-xl font-semibold">Import</h1>
-      <p>Choose Create lead to load an import into the Create Lead tab.</p>
       {error ? (
         <p role="alert">
           {error} <button onClick={reload}>Retry</button>
