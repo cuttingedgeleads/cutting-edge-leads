@@ -110,13 +110,13 @@ async function renderer() {
     module,
     module.exports,
   );
-  return (raw: Buffer) =>
+  return (raw: Buffer, reviewedData: Record<string,string> | null = null) =>
     module.exports.render({
       id: 'synthetic',
       status: 'waiting',
       version: 0,
       originalPayload: raw.toString('utf8'),
-      reviewedData: null,
+      reviewedData,
       leadId: null,
     });
 }
@@ -143,21 +143,75 @@ test('inbox has one Create lead action into the existing tab, without workflow f
   const [inbox] = render(body());
   const html = inbox();
   assert.match(html, /href="\/admin\/leads\?importId=synthetic"[^>]*>Create lead<\/a>/);
-  assert.doesNotMatch(html, />Waiting<|>Saved requests<|>Published</);
+  assert.doesNotMatch(html, />Waiting<|>Saved requests<|>Published<|Choose Create lead to load/);
   assert.equal((html.match(/>Create lead<\/a>/g) || []).length, 1);
   assert.match(html, /José 🌿/);
   assert.match(html, /Unicode 内部/);
 });
 
-test('import immediately supplies the existing create form, retaining private notes outside its description', async () => {
+test('import carries source notes into the editable description for explicit review', async () => {
   const render = await renderer();
   const [, editor] = render(body());
   const html = editor();
   assert.match(html, /data-prefill=/);
   assert.match(html, /&quot;name&quot;:&quot;José 🌿&quot;/);
-  assert.match(html, /&quot;description&quot;:&quot;&quot;/);
+  assert.ok(html.includes('&quot;description&quot;:&quot;Unicode 内部 '+String.fromCharCode(0xfeff)+' context&quot;'));
   assert.match(html, /Unicode 内部/);
   assert.doesNotMatch(html, />Save request<|>Review &amp; publish</);
+});
+
+test('import renders only the existing form without extra context or instruction copy', async () => {
+  const render = await renderer();
+  const [, editor] = render(body());
+  const html = editor();
+  assert.doesNotMatch(html, /<aside|Back to Import|Private Studio|Original address|Full address|photos remain|Review the imported|Nothing is published/);
+  assert.match(html, /<output/);
+});
+
+function prefilled(html: string) {
+  const encoded = /data-prefill="([^"]*)"/.exec(html)![1];
+  return JSON.parse(encoded.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'));
+}
+
+test('import uses street and city fields, not the full mailing address, and defaults to one contractor', async () => {
+  const render = await renderer();
+  const p = {...JSON.parse(body().toString()), address: '123 Synthetic Street, Metairie',
+    formattedAddress: '123 Synthetic Street, Metairie, LA 70001, USA', city: '', state: 'LA', postalCode: '70001',
+    inquiryNotes: 'First note\nSecond line', estimatorNotes: 'Estimator note', salesNotes: 'Sales note'};
+  const [,editor] = render(Buffer.from(JSON.stringify(p)));
+  const data = prefilled(editor());
+  assert.equal(data.address, '123 Synthetic Street');
+  assert.equal(data.city, 'Metairie');
+  assert.equal(data.unlockLimit, '1');
+  assert.equal(data.description, 'First note\nSecond line\n\nEstimator note\n\nSales note');
+  assert.equal(data.state, 'LA'); assert.equal(data.zip, '70001');
+});
+
+test('prefill preserves explicit reviewed edits and contractor choice without changing receipt data', async () => {
+  const render = await renderer();
+  const reviewed = { name: 'Reviewed', email: '', phone: '', address: '456 Reviewed Street', city: 'Kenner', state: 'LA', zip: '70065', description: '', jobType: 'Other', price: '15', unlockLimit: '2' };
+  const copy = {...reviewed};
+  const [,editor] = render(body(), reviewed);
+  assert.deepEqual(prefilled(editor()), reviewed);
+  assert.deepEqual(reviewed, copy);
+});
+
+test('prefill preserves street-only and empty addresses, units and original note formatting', async () => {
+  const render = await renderer();
+  const cases = [
+    {address:'',formattedAddress:'',city:'',street:'',locality:''},
+    {address:'123 Synthetic Street, Apt 4',formattedAddress:'123 Synthetic Street, Apt 4',city:'',street:'123 Synthetic Street, Apt 4',locality:''},
+    {address:'123 Synthetic Street Metairie LA 70001 USA',formattedAddress:'123 Synthetic Street, Metairie, LA 70001, USA',city:'',street:'123 Synthetic Street',locality:'Metairie'},
+    {address:'123 Synthetic Street',formattedAddress:'',city:'',street:'123 Synthetic Street',locality:''},
+    {address:'123 Synthetic Street, Apt 4, Metairie, LA 70001, USA',formattedAddress:'',city:'',street:'123 Synthetic Street, Apt 4',locality:'Metairie'},
+    {address:'123 Synthetic Street',formattedAddress:'123 Synthetic Street, Kenner, LA 70065, USA',city:'',street:'123 Synthetic Street',locality:'Kenner'},
+  ];
+  for (const c of cases) {
+    const raw=Buffer.from(JSON.stringify({...JSON.parse(body().toString()),...c}));
+    const [,editor]=render(raw);const data=prefilled(editor());
+    assert.equal(data.address,c.street);assert.equal(data.city,c.locality);
+    assert.equal(data.unlockLimit,'1');assert.equal(data.description,JSON.parse(body().toString()).inquiryNotes);
+  }
 });
 
 test('correctly signed malformed UTF-8 remains rejected', () => {

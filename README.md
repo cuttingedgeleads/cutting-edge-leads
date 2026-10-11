@@ -152,14 +152,18 @@ or authorization to deploy or change live accounts.
 
 ## Studio imports → Create Lead
 
-The Import tab is one queue of unfinished imports, including previously saved
+The Import tab is the last admin tab and is one queue of unfinished imports, including previously saved
 requests. Each tile has one **Create lead** action. It opens the existing
-**Create Lead** tab and fills the imported contact/address fields (or the last
-reviewed values). Navigation and prefill are read-only: the import is not consumed
+**Create Lead** tab and fills the imported contact/address/notes fields (or the last
+reviewed values), with one contractor selected by default. The usual form is shown
+without a separate imported-information panel or import instructions. The street
+and city use their own fields, not a full mailing address in the street input.
 and no public lead is created until **Publish lead** is explicitly submitted.
 
-Studio notes stay visible as private context, never silently copied into the
-public description. Source photos remain in Studio. Publication links the lead
+Per the owner's requested prefill behavior, inquiry, estimator and sales notes
+are copied into the editable description for review before explicit publication.
+Existing reviewed descriptions and contractor selections are preserved. Original
+receipt data remains private and unchanged. Source photos remain in Studio. Publication links the lead
 and immutable import receipt in one version-checked transaction. Lost
 acknowledgements and concurrent retries return the same lead. Existing import
 notification/deep links redirect to the same Create Lead tab after authentication.

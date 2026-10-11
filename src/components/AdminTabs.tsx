@@ -5,12 +5,12 @@ import { ImportBadge } from './ImportState';
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/admin/imports", label: "Import" },
   { href: "/admin/leads", label: "Create Lead" },
   { href: "/admin/active-leads", label: "Active Leads" },
   { href: "/admin/contractors", label: "Contractors" },
   { href: "/admin/purchased-leads", label: "Purchased Leads" },
   { href: "/admin/expired-leads", label: "Expired Leads" },
+  { href: "/admin/imports", label: "Import" },
 ];
 
 function isActiveTab(pathname: string, href: string) {
