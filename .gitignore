@@ -11,6 +11,7 @@
 !.yarn/versions
 
 # testing
+/.handoff-qa/
 /coverage
 /.auth-qa/
 /.auth-qa.lock

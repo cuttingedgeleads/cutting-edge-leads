@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { safeImportReturn } from '@/lib/import-navigation';
 
 function LoginForm() {
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +26,7 @@ function LoginForm() {
 
     try {
       const result = await signIn("credentials", {
-        email, password, remember: String(remember), redirect: false, callbackUrl: "/",
+        email, password, remember: String(remember), redirect: false, callbackUrl: safeImportReturn(searchParams?.get('callbackUrl')),
       });
       if (result?.error || !result?.url) {
         setError(result?.error === 'ACCOUNT_LOCKED' ? 'This account is temporarily locked. Try again in 10 minutes.' : 'Invalid email or password.');

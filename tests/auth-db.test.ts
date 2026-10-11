@@ -1,3 +1,4 @@
+import {authLocalFixture} from './auth-local-fixture.mjs';
 import test, {after} from 'node:test';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
@@ -5,7 +6,7 @@ import {hash} from 'bcryptjs';
 import {PrismaClient} from '@prisma/client';
 import * as service from '../src/lib/auth-service';
 import * as reset from '../src/lib/password-reset';
-assert.equal(process.env.DATABASE_URL,'postgresql://leads_qa@127.0.0.1:55474/leads_auth_qa');
+assert.equal(process.env.DATABASE_URL,authLocalFixture().databaseURL);
 const db = new PrismaClient();
 const ids: string[]=[];
 const password=()=>randomBytes(24).toString('base64url');

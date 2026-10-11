@@ -4,7 +4,7 @@ import { NetworkOnly } from "workbox-strategies";
 
 const sw = self;
 
-const authPath = path => /^\/(?:api\/auth(?:\/|$)|login(?:\/|$)|forgot-password(?:\/|$)|reset-password(?:\/|$))/.test(path);
+const authPath = path => /^\/(?:admin\/imports(?:\/|$)|api\/(?:admin\/imports|integrations\/studio\/imports|leads\/create)(?:\/|$)|api\/auth(?:\/|$)|login(?:\/|$)|forgot-password(?:\/|$)|reset-password(?:\/|$))/.test(path);
 registerRoute(({url}) => authPath(url.pathname), new NetworkOnly());
 precacheAndRoute((self.__WB_MANIFEST || []).filter(entry => !authPath(new URL(typeof entry === 'string' ? entry : entry.url, self.location.origin).pathname)));
 
@@ -64,6 +64,7 @@ sw.addEventListener("push", (event) => {
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         data: { url },
+        tag: typeof payload.tag === 'string' ? payload.tag : undefined,
       });
     })()
   );
@@ -71,6 +72,17 @@ sw.addEventListener("push", (event) => {
 
 sw.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/";
-  event.waitUntil(sw.clients.openWindow(url));
+  event.waitUntil((async () => {
+    let target;
+    try { target = new URL(event.notification.data?.url || '/', sw.location.origin); } catch { return; }
+    if (target.origin !== sw.location.origin || target.username || target.password) return;
+    if (target.pathname.startsWith('/admin/imports') && (!/^\/admin\/imports(?:\/[A-Za-z0-9_-]{1,128})?$/.test(target.pathname) || target.search || target.hash)) return;
+    const windows = await sw.clients.matchAll({type:'window',includeUncontrolled:true});
+    for (const client of windows) {
+      if (new URL(client.url).origin !== sw.location.origin || !client.navigate) continue;
+      const navigated = await client.navigate(target.href);
+      if (navigated) { await navigated.focus(); return; }
+    }
+    await sw.clients.openWindow(target.href);
+  })());
 });

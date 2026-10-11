@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ImportBadge } from './ImportState';
 import { usePathname } from "next/navigation";
 
 const tabs = [
+  { href: "/admin/imports", label: "Import" },
   { href: "/admin/leads", label: "Create Lead" },
   { href: "/admin/active-leads", label: "Active Leads" },
   { href: "/admin/contractors", label: "Contractors" },
@@ -35,7 +37,7 @@ export function AdminTabs() {
                 : "text-slate-600 hover:text-slate-900 hover:border-slate-400"
             }`}
           >
-            {tab.label}
+            {tab.label}{tab.href === '/admin/imports' && <ImportBadge/>}
           </Link>
         );
       })}

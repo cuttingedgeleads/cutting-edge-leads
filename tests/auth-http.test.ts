@@ -1,17 +1,19 @@
+import {authLocalFixture} from './auth-local-fixture.mjs';
 import test, {after} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {hash} from 'bcryptjs';
 import {PrismaClient} from '@prisma/client';
-import {request, chromium} from 'playwright';
+import {createRequire} from 'node:module';
+const {request,chromium}=createRequire(import.meta.url)(process.env.AUTH_QA_PLAYWRIGHT_DRIVER||'playwright') as typeof import('playwright');
 import {consumeReset,tokenDigest} from '../src/lib/password-reset';
-assert.equal(process.env.DATABASE_URL,'postgresql://leads_qa@127.0.0.1:55474/leads_auth_qa');
-const origin='http://127.0.0.1:3100';
+assert.equal(process.env.DATABASE_URL,authLocalFixture().databaseURL);
+const origin=authLocalFixture().origin;
 const db=new PrismaClient();const ids:string[]=[];
 const password=()=>randomBytes(24).toString('base64url');
 async function user(){const p=password();const u=await db.user.create({data:{email:`${randomBytes(12).toString('hex')}@example.invalid`,name:'Synthetic browser',passwordHash:await hash(p,10)}});ids.push(u.id);return {u,p};}
 after(async()=>{await db.user.deleteMany({where:{id:{in:ids}}});await db.$disconnect();});
-test('REAL activated service worker: auth is network-only even with poisoned cache while offline',async()=>{
+test('REAL activated worker: auth/private imports reject poisoned cache under explicit worker-transport failure plus page offline emulation',async()=>{
  const browser=await chromium.launch({headless:true,channel:'msedge'});
  const context=await browser.newContext({viewport:{width:390,height:844}});
  const page=await context.newPage();
@@ -19,13 +21,28 @@ test('REAL activated service worker: auth is network-only even with poisoned cac
   await page.goto(origin+'/login');
   await page.evaluate(async()=>{await navigator.serviceWorker.register('/sw.js');await navigator.serviceWorker.ready;});
   await page.reload();await page.waitForFunction(()=>!!navigator.serviceWorker.controller,{},{timeout:15000});
-  const paths=['/login','/forgot-password','/reset-password?token=synthetic','/api/auth/session'];
-  for(const path of paths) assert.equal(await page.evaluate(async path=>(await fetch(path)).ok,path),true);
+  const authPaths=['/login','/forgot-password','/reset-password?token=synthetic','/api/auth/session'];
+  const privatePaths=['/admin/imports','/admin/imports/synthetic','/api/admin/imports','/api/admin/imports/count','/api/admin/imports/synthetic'];
+  const paths=[...authPaths,...privatePaths];
+  for(const path of authPaths) assert.equal(await page.evaluate(async path=>(await fetch(path)).ok,path),true);
+  // Unauthorized/absent private resources can return 404 or redirect; still never cache them.
+  for(const path of privatePaths) await page.evaluate(async path=>{await (await fetch(path)).text();},path);
   const cached=await page.evaluate(async()=>{const urls:string[]=[];for(const key of await caches.keys())for(const req of await (await caches.open(key)).keys())urls.push(new URL(req.url).pathname);return urls;});
-  assert.equal(cached.some(p=>/^\/(login|forgot-password|reset-password|api\/auth)(\/|$)/.test(p)),false);
+  assert.equal(cached.some(p=>/^\/(login|forgot-password|reset-password|api\/auth|admin\/imports|api\/admin\/imports)(\/|$)/.test(p)),false);
   await page.evaluate(async paths=>{const c=await caches.open('synthetic-stale-auth');for(const p of paths)await c.put(p,new Response('synthetic cached auth'));},paths);
   await context.setOffline(true);
-  for(const path of paths) assert.equal(await page.evaluate(async path=>{try{await fetch(path);return true;}catch{return false;}},path),false);
+  assert.equal(await page.evaluate(()=>navigator.onLine),false);
+  // Context offline emulation does not reliably disable worker networking.
+  // Inject failure only at the activated worker's transport boundary, leaving
+  // its actual fetch handler and poisoned CacheStorage intact. This is NOT
+  // physical-device offline proof (nor a pass of the previously failed gate).
+  const workerURL=await page.evaluate(()=>navigator.serviceWorker.controller!.scriptURL);
+  const worker=context.serviceWorkers().find(w=>w.url()===workerURL);
+  assert.ok(worker,'activated controlling worker is available');
+  await worker.evaluate(()=>{self.fetch=async()=>{throw new TypeError('SYNTHETIC_WORKER_TRANSPORT_FAILURE');};});
+  for(const path of paths) assert.equal(await page.evaluate(async path=>{try{await fetch(path);return true;}catch{return false;}},path),false,path+' must reject, not return a cached response');
+  const poison=await page.evaluate(async paths=>{const c=await caches.open('synthetic-stale-auth');return Promise.all(paths.map(async p=>(await c.match(p))?.text()));},paths);
+  assert.deepEqual(poison,paths.map(()=>'synthetic cached auth'),'poisoned responses remain present but unused');
  }finally{await context.close();await browser.close();}
 });
 async function client(){return request.newContext({baseURL:origin});}

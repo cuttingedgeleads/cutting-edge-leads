@@ -53,6 +53,7 @@ model User {
   authSessions           LeadAuthSession[]
   passwordResetTokens    PasswordResetToken[]
   auditLogs              AuditLog[]
+  studioImports          StudioImport[]
 }
 
 model LeadResetAttempt {
@@ -125,6 +126,7 @@ model Lead {
   createdAt   DateTime             @default(now())
   photos      LeadPhoto[]
   unlocks     LeadUnlockRequest[]  @relation("LeadUnlocks")
+
 }
 
 model LeadPhoto {
@@ -146,6 +148,33 @@ model LeadUnlockRequest {
   contractor   User         @relation("UserUnlocks", fields: [contractorId], references: [id])
 
   @@unique([leadId, contractorId])
+}
+
+model StudioImport {
+  id String @id @default(cuid())
+  source String
+  environment String
+  sourceRecordId String
+  transferId String @unique
+  recipientId String
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+  originalPayload String
+  payloadSha256 String
+  status String @default("waiting")
+  reviewedData Json?
+  version Int @default(0)
+  lastSaveVersion Int?
+  lastSaveHash String?
+  leadId String? @unique
+
+  notificationStatus String @default("pending")
+  notificationLease String?
+  notificationLeaseUntil DateTime?
+  notificationAttemptedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([source, environment, sourceRecordId])
+  @@index([recipientId, status, createdAt])
 }
 
 model AppSetting {

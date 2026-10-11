@@ -1,12 +1,13 @@
 import test from 'node:test';
+import {authLocalFixture} from './auth-local-fixture.mjs';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {hash} from 'bcryptjs';
 import {PrismaClient} from '@prisma/client';
 import {chromium} from 'playwright';
-assert.equal(process.env.DATABASE_URL,'postgresql://leads_qa@127.0.0.1:55474/leads_auth_qa');
-const origin='http://127.0.0.1:3100';
+assert.equal(process.env.DATABASE_URL,authLocalFixture().databaseURL);
+const origin=authLocalFixture().origin;
 
 test('REAL local application: owner and customer route/buttons, edit persistence and compact checkout',async()=>{
  const db=new PrismaClient();const users:string[]=[];const leads:string[]=[];
