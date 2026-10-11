@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   turbopack: {},
   async headers() {
     return [
-      ...["/login", "/forgot-password", "/reset-password", "/api/auth/:path*"].map(source => ({
+      ...["/login", "/forgot-password", "/reset-password", "/api/auth/:path*", "/admin/imports/:path*", "/api/admin/imports/:path*", "/api/integrations/studio/imports", "/api/leads/create"].map(source => ({
         source,
         headers: [
           { key: "Cache-Control", value: "private, no-store, max-age=0" },

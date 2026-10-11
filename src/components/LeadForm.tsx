@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { LeadPhotoInput, LeadPhotoInputRef } from "@/components/LeadPhotoInput";
@@ -83,9 +83,17 @@ async function compressImage(file: File): Promise<File> {
   });
 }
 
-export function LeadForm() {
+export function LeadForm({importRequest}:{importRequest?:{id:string;version:number;data:Record<string,string>;onPublished:()=>void;onUnavailable?:()=>void}} = {}) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const initialImport = useRef(importRequest);
+  useEffect(() => {
+    if (!initialImport.current) return;
+    for (const [key,value] of Object.entries(initialImport.current.data)) {
+      const input = formRef.current?.elements.namedItem(key);
+      if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement) input.value = value;
+    }
+  }, []);
   const photoInputRef = useRef<LeadPhotoInputRef>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitting = useRef(false);
@@ -574,6 +582,10 @@ export function LeadForm() {
       }
 
       // Step 3: Send request
+      if (importRequest) {
+        formData.set('importId', importRequest.id);
+        formData.set('importVersion', String(importRequest.version));
+      }
       let response: Response;
       try {
         response = await fetch("/api/leads/create", {
@@ -586,6 +598,7 @@ export function LeadForm() {
       }
 
       // Step 4: Parse response
+      if (importRequest && [401,403,404].includes(response.status)) { importRequest.onUnavailable?.(); return; }
       let result;
       try {
         const text = await response.text();
@@ -607,6 +620,7 @@ export function LeadForm() {
       }
 
       // Step 5: Success - refresh
+      if (importRequest) { importRequest.onPublished(); return; }
       photoInputRef.current?.clear();
       form.reset();
       setQuickPasteText("");
@@ -726,6 +740,7 @@ export function LeadForm() {
           className={`mt-1 w-full rounded-lg border px-3 py-2 ${fieldHasError("unlockLimit") ? "border-red-500 ring-1 ring-red-500" : ""}`}
           required
         >
+          {importRequest && <option value="">Select unlock limit</option>}
           <option value="1">1 contractor</option>
           <option value="2">2 contractors</option>
           <option value="3">3 contractors</option>
@@ -742,9 +757,9 @@ export function LeadForm() {
       </div>
       <div className="sm:col-span-2">
         <label className="text-sm font-medium">Street address</label>
-        <AddressAutocomplete
+        {importRequest ? <input name="address" className="mt-1 w-full rounded-lg border px-3 py-2" required/> : <AddressAutocomplete
           className={fieldHasError("address") ? "border-red-500 ring-1 ring-red-500" : ""}
-        />
+        />}
       </div>
       <div>
         <label className="text-sm font-medium">City</label>

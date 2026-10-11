@@ -1,5 +1,6 @@
 // One-time, empty dedicated LOCAL QA database only. Provision the database separately.
 import {Client} from 'pg';
+import {authLocalFixture} from './auth-local-fixture.mjs';
 import {spawnSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
 import {readdirSync} from 'node:fs';
@@ -7,7 +8,7 @@ import {join} from 'node:path';
 const cwd=fileURLToPath(new URL('..',import.meta.url));
 if(process.argv[2]!=='--empty-local-qa')throw new Error('Explicit --empty-local-qa confirmation required');
 if([cwd,join(cwd,'prisma')].some(dir=>readdirSync(dir).some(x=>/^\.env(?:\.|$)/.test(x)&&x!=='.env.example')))throw new Error('Remove dotenv files before isolated QA');
-const url='postgresql://leads_qa@127.0.0.1:55474/leads_auth_qa';
+const url=authLocalFixture().databaseURL;
 const client=new Client({connectionString:url});
 try {
  await client.connect();

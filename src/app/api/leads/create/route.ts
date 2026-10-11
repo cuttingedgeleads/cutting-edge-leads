@@ -11,6 +11,9 @@ import { sanitizeInput } from "@/lib/sanitize";
 import { logAudit } from "@/lib/audit";
 import { fetchLeadImages } from "@/lib/lead-images";
 import { getTestMode } from "@/lib/settings";
+import { getImport, publishImport } from '@/lib/import-store';
+import { assertImportOrigin, importFailure, importJson } from '@/lib/import-http';
+import { ImportError } from '@/lib/import-wire';
 
 const MIN_PRICE = 1;
 const MAX_PHOTO_SIZE_BYTES = 5 * 1024 * 1024;
@@ -46,6 +49,7 @@ const toTitleCase = (value: string) => {
 };
 
 export async function POST(request: NextRequest) {
+  let isImport = false;
   try {
     const session = await getSession();
     if (!session || session.user.role !== "ADMIN") {
@@ -53,6 +57,15 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
+    const importId = formData.has('importId') ? String(formData.get('importId')) : null;
+    const importVersion = Number(formData.get('importVersion'));
+    isImport = importId !== null;
+    if (importId !== null) {
+      assertImportOrigin(request);
+      const receipt = await getImport(prisma, session.user.id, importId);
+      if (receipt.leadId) return importJson({success:true,leadId:receipt.leadId});
+      if (receipt.status !== 'saved' || !Number.isInteger(importVersion) || receipt.version !== importVersion) throw new ImportError(409,'Save request and reload before publishing.');
+    }
     const testMode = await getTestMode();
     
     const rawName = sanitizeInput(String(formData.get("name") || ""));
@@ -84,6 +97,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (invalidPhoto) {
+      if (isImport) return importJson({error:"Photos must be JPEG, PNG, WEBP, or GIF files up to 5MB."},400);
       return NextResponse.json(
         { error: "Photos must be JPEG, PNG, WEBP, or GIF files up to 5MB." },
         { status: 400 }
@@ -101,9 +115,10 @@ export async function POST(request: NextRequest) {
       !city ||
       !state ||
       !zip ||
-      price < MIN_PRICE ||
+      price < MIN_PRICE || !Number.isSafeInteger(price) ||
       ![1, 2, 3].includes(unlockLimit)
     ) {
+      if (isImport) return importJson({error:"Please fill in all fields correctly"},400);
       return NextResponse.json({ error: "Please fill in all fields correctly" }, { status: 400 });
     }
 
@@ -137,8 +152,7 @@ export async function POST(request: NextRequest) {
     const autoImages = await fetchLeadImages({ address, city, state, zip });
     const allPhotos = [...autoImages, ...photos].filter(Boolean);
 
-    const lead = await prisma.lead.create({
-      data: {
+    const data = {
         name,
         email,
         phone,
@@ -155,9 +169,12 @@ export async function POST(request: NextRequest) {
         photos: {
           create: allPhotos.map((url) => ({ url })),
         },
-      },
-      include: { photos: true },
-    });
+      };
+    const publication = importId !== null
+      ? await publishImport(prisma, session.user.id, importId, importVersion, data)
+      : {created:true,lead:await prisma.lead.create({data,include:{photos:true}})};
+    const lead = publication.lead;
+    if (!publication.created) return importJson({success:true,leadId:lead.id});
 
     await logAudit({
       action: "ADMIN_ACTION",
@@ -282,8 +299,10 @@ Log in to view: cuttingedgeleads.net`;
       )
     );
 
+    if (isImport) return importJson({success:true,leadId:lead.id});
     return NextResponse.json({ success: true, leadId: lead.id });
   } catch (error) {
+    if (isImport || error instanceof ImportError) return importFailure(error);
     console.error("Create lead failed:", error);
     return NextResponse.json({ error: "Failed to create lead" }, { status: 500 });
   }

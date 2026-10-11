@@ -1,3 +1,4 @@
+import {authLocalFixture} from './auth-local-fixture.mjs';
 import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes} from 'node:crypto';
@@ -6,7 +7,7 @@ import {hash} from 'bcryptjs';
 import {requestReset,resetBudget,quotaKey,consumeReset,tokenDigest,changePassword} from '../src/lib/password-reset';
 import {issueSession,validateAuth} from '../src/lib/auth-service';
 import {authOptions} from '../src/lib/auth';
-assert.equal(process.env.DATABASE_URL,'postgresql://leads_qa@127.0.0.1:55474/leads_auth_qa');
+assert.equal(process.env.DATABASE_URL,authLocalFixture().databaseURL);
 const clients=[new PrismaClient(),new PrismaClient()];const db=clients[0];const ids:string[]=[];const seeded:string[]=[];
 const random=()=>randomBytes(24).toString('hex');
 after(async()=>{await db.user.deleteMany({where:{id:{in:ids}}});await db.leadResetAttempt.deleteMany({where:{id:{in:seeded}}});await Promise.all(clients.map(c=>c.$disconnect()));});

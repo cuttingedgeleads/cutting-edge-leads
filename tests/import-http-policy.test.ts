@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {readBoundedBody,assertImportOrigin} from '../src/lib/import-http';
+test('body streamed bound enforced before parse',async()=>{await assert.rejects(readBoundedBody(new Request('http://localhost',{method:'POST',body:'x'.repeat(262145)})),{status:413});assert.equal((await readBoundedBody(new Request('http://localhost',{method:'POST',body:'{}'}))).toString(),'{}');});
+test('browser mutations require exact trusted origin including scheme',()=>{for(const origin of [null,'https://evil.test','http://www.cuttingedgeleads.net'])assert.throws(()=>assertImportOrigin(new Request('https://www.cuttingedgeleads.net/api/admin/imports',{headers:origin?{origin}:{}}),'https://www.cuttingedgeleads.net'),{status:403});assert.doesNotThrow(()=>assertImportOrigin(new Request('https://www.cuttingedgeleads.net',{headers:{origin:'https://www.cuttingedgeleads.net'}}),'https://www.cuttingedgeleads.net'));});
