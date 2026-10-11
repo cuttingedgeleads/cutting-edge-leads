@@ -7,10 +7,23 @@ const source = (overrides: Partial<ImportPayload> = {}) => ({
  address:'123 Synthetic Street',formattedAddress:'',city:'',state:'LA',postalCode:'70001',
  inquiryNotes:'Inquiry',estimatorNotes:'Estimator',salesNotes:'Sales',...overrides,
 } as ImportPayload);
-test('saved review preserves multipart destination and explicit edits verbatim',()=>{
- const reviewed={name:'Reviewed',address:'456 Reviewed Street, Building B, Apt 4',city:'Kenner',description:'',unlockLimit:'2'};
+test('saved review preserves multipart destination and nonempty description edits verbatim',()=>{
+ const reviewed={name:'Reviewed',address:'456 Reviewed Street, Building B, Apt 4',city:'Kenner',description:'Owner-reviewed description\nDo not replace.',unlockLimit:'2'};
  const before=JSON.stringify(reviewed);const actual=importFormData(source(),reviewed);
  assert.deepEqual(actual,reviewed);assert.equal(JSON.stringify(reviewed),before);
+});
+test('a saved blank description prefills transferred notes without rewriting the saved review',()=>{
+ const p=source({inquiryNotes:'Inquiry\n第二行',estimatorNotes:'Estimator',salesNotes:'Sales'});
+ const reviewed=Object.freeze({name:'Reviewed',address:'456 Reviewed Street, Building B, Apt 4',city:'Kenner',description:'',unlockLimit:'2'});
+ const before=JSON.stringify(p);const actual=importFormData(p,reviewed);
+ assert.deepEqual(actual,{...reviewed,description:'Inquiry\n第二行\n\nEstimator\n\nSales'});
+ assert.equal(reviewed.description,'');assert.equal(JSON.stringify(p),before);
+ assert.equal(importFormData(p,{unlockLimit:'2'}).description,actual.description);
+});
+test('saved descriptions remain empty without source notes and nonempty values stay verbatim',()=>{
+ const emptySource=source({inquiryNotes:'',estimatorNotes:'',salesNotes:''});
+ assert.equal(importFormData(emptySource,{description:'',unlockLimit:'1'}).description,'');
+ assert.equal(importFormData(source(),{description:'  ',unlockLimit:'1'}).description,'  ');
 });
 test('locality and country prefixes are not apartment designators',()=>{
  for(const city of ['Sterling','Aptos','Stewartstown']){

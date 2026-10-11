@@ -193,8 +193,11 @@ test('prefill preserves explicit reviewed edits and contractor choice without ch
   const reviewed = { name: 'Reviewed', email: '', phone: '', address: '456 Reviewed Street', city: 'Kenner', state: 'LA', zip: '70065', description: '', jobType: 'Other', price: '15', unlockLimit: '2' };
   const copy = {...reviewed};
   const [,editor] = render(body(), reviewed);
-  assert.deepEqual(prefilled(editor()), reviewed);
+  assert.deepEqual(prefilled(editor()), {...reviewed, description: JSON.parse(body().toString()).inquiryNotes});
   assert.deepEqual(reviewed, copy);
+  const edited = {...reviewed, description: 'Explicitly reviewed description'};
+  const [,editedEditor] = render(body(), edited);
+  assert.deepEqual(prefilled(editedEditor()), edited);
 });
 
 test('prefill preserves street-only and empty addresses, units and original note formatting', async () => {

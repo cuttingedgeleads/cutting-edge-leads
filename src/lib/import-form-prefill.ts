@@ -55,9 +55,16 @@ function streetFromMailingLine(value: string, p: ImportPayload, postalRemainder:
   return prefix;
 }
 
-// A draft-only projection. Saved human edits and immutable receipts are not rewritten.
+// A draft-only projection. Neither the saved snapshot nor the immutable receipt is rewritten.
 export function importFormData(p: ImportPayload, reviewed: Record<string, string> | null): Record<string, string> {
-  if (reviewed) return { ...reviewed, unlockLimit: reviewed.unlockLimit || '1' };
+  const sourceNotes = [p.inquiryNotes, p.estimatorNotes, p.salesNotes].filter(Boolean).join('\n\n');
+  // Older saved imports can have an empty Description even though notes arrived.
+  // Restore those notes only in the initial editable draft; keep nonempty edits.
+  if (reviewed) return {
+    ...reviewed,
+    description: reviewed.description || sourceNotes,
+    unlockLimit: reviewed.unlockLimit || '1',
+  };
   const raw = p.formattedAddress || p.address;
   const source = addressParts(raw, p.city.trim());
   const fallback = addressParts(p.address, p.city.trim()).locality;
@@ -67,7 +74,7 @@ export function importFormData(p: ImportPayload, reviewed: Record<string, string
     address: source.separated ? source.street : streetFromMailingLine(source.street, p, source.postalRemainder),
     city: p.city || (new RegExp(`^(?:${country}|[A-Z]{2}(?:\\s+\\d{5}(?:-\\d{4})?)?)$`, 'i').test(locality) ? '' : locality),
     state: p.state, zip: p.postalCode,
-    description: [p.inquiryNotes, p.estimatorNotes, p.salesNotes].filter(Boolean).join('\n\n'),
+    description: sourceNotes,
     jobType: '', price: '', unlockLimit: '1',
   };
 }
