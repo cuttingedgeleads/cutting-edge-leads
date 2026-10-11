@@ -168,3 +168,11 @@ and immutable import receipt in one version-checked transaction. Lost
 acknowledgements and concurrent retries return the same lead. Existing import
 notification/deep links redirect to the same Create Lead tab after authentication.
 The prior private-save API remains compatible; no database migration is required.
+
+### Delete from Import
+
+Each private Import tile has **Delete** beside **Create lead**. A confirmation popup asks before sending a deletion. Cancel makes no request. Confirm removes only that private import from the queue and badge; the original Studio record and published leads are not deleted. Failed or ambiguous acknowledgements retain the tile for explicit retry.
+
+Deletion is recipient/admin scoped, same-origin protected, version-checked and serialized against saving/publication. The immutable receipt and unique delivery keys remain as a tombstone, so delayed Studio retries cannot recreate a deleted tile. Previously published imports cannot be deleted by this action. No customer-record deletion is needed for production acceptance.
+
+Deployment requires the additive `20261011000100_import_soft_delete` migration before promoting this runtime. It adds only nullable `StudioImport.deletedAt` plus unpublished-only and terminal-deletion guards. Keep the original receipt constraints/triggers and all shared Studio tables unchanged. Back up and offline-restore the shared database, exercise this exact SQL, and compare every original row before applying it. Retain the column and guard on source rollback: older UI versions may display tombstones, but their save/publish attempts are blocked by the database; prefer a forward correction over dropping deletion history.

@@ -103,7 +103,7 @@ export async function getImport(
 ) {
   await admin(db, userId);
   const record = await db.studioImport.findFirst({
-    where: { id, recipientId: userId },
+    where: { id, recipientId: userId, deletedAt: null },
   });
   if (!record) throw new ImportError(404, 'Not found');
   return record;
@@ -121,11 +121,11 @@ export async function listImports(
     offset < 0
   )
     throw new ImportError(400, 'Invalid list');
-  const where = { recipientId: userId, status: status === 'pending' ? { in: ['waiting', 'saved'] } : status };
+  const where = { recipientId: userId, deletedAt: null, status: status === 'pending' ? { in: ['waiting', 'saved'] } : status };
   return db.$transaction(
     async (tx) => ({
       waitingCount: await tx.studioImport.count({
-        where: { recipientId: userId, status: 'waiting' },
+        where: { recipientId: userId, deletedAt: null, status: 'waiting' },
       }),
       total: await tx.studioImport.count({
         where,
@@ -144,6 +144,31 @@ async function lock(db: Prisma.TransactionClient, userId: string, id: string) {
   await admin(db, userId);
   await db.$queryRaw`SELECT "id" FROM "StudioImport" WHERE "id"=${id} AND "recipientId"=${userId} FOR UPDATE`;
   return getImport(db, userId, id);
+}
+// Keep the receipt as a tombstone so delayed Studio deliveries cannot recreate it.
+export async function deleteImport(
+  db: PrismaClient, userId: string, id: string, version: number,
+) {
+  if (!Number.isSafeInteger(version) || version < 0)
+    throw new ImportError(400, 'Invalid version');
+  return db.$transaction(async (tx) => {
+    // Hold authorization steady until the destructive transaction commits.
+    await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id"=${userId} FOR SHARE`;
+    await admin(tx, userId);
+    await tx.$queryRaw`SELECT "id" FROM "StudioImport" WHERE "id"=${id} AND "recipientId"=${userId} FOR UPDATE`;
+    const r = await tx.studioImport.findFirst({ where: { id, recipientId: userId } });
+    if (!r) throw new ImportError(404, 'Not found');
+    if (r.deletedAt) return { id, deleted: true };
+    if (r.leadId || !['waiting', 'saved'].includes(r.status))
+      throw new ImportError(409, 'This import has already been published.');
+    if (r.version !== version)
+      throw new ImportError(409, 'This import changed. Review it, then try Delete again.');
+    await tx.studioImport.update({ where: { id }, data: {
+      deletedAt: new Date(), version: { increment: 1 },
+      notificationLease: null, notificationLeaseUntil: null,
+    } });
+    return { id, deleted: true };
+  });
 }
 export async function saveImport(
   db: PrismaClient,

@@ -56,7 +56,7 @@ async function main(){
   const migration=readFileSync(path.join(root,'prisma/migrations/20261010000100_studio_import/migration.sql'),'utf8');
   writeFileSync(path.join(evidence,'baseline.sql'),baseSql);writeFileSync(path.join(evidence,'migration.sql'),migration);
   log(`Baseline ${baseline}; actual migration SHA256=${createHash('sha256').update(migration).digest('hex')}`);
-  await sql.query('BEGIN');await sql.query(baseSql);await sql.query(migration);await sql.query('COMMIT');
+  await sql.query('BEGIN');await sql.query(baseSql);await sql.query(migration);await sql.query(readFileSync(path.join(root,'prisma/migrations/20261011000100_import_soft_delete/migration.sql'),'utf8'));await sql.query('COMMIT');
   db=new PrismaClient({datasources:{db:{url}}});
   const user=await db.user.create({data:{id:'fixture-admin',email:'deletion-fixture@example.invalid',name:'Synthetic fixture',passwordHash:'not-a-password',role:'ADMIN'}});
   const leadData={jobType:'Synthetic mowing',description:'Synthetic deletion fixture',address:'1 Fictional Fixture Lane',city:'Fictional',state:'XX',zip:'00000',price:1,isTestLead:true};
