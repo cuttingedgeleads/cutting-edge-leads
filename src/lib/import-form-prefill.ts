@@ -62,6 +62,9 @@ export function importFormData(p: ImportPayload, reviewed: Record<string, string
   // Restore those notes only in the initial editable draft; keep nonempty edits.
   if (reviewed) return {
     ...reviewed,
+    // Older saved forms copied the full source mailing line into Street address.
+    // Re-project that exact copy only; retain changed destinations and empty edits.
+    ...(reviewed.address === (p.formattedAddress || p.address) ? { address: importFormData(p, null).address } : {}),
     description: reviewed.description || sourceNotes,
     unlockLimit: reviewed.unlockLimit || '1',
   };

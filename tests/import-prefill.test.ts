@@ -12,6 +12,23 @@ test('saved review preserves multipart destination and nonempty description edit
  const before=JSON.stringify(reviewed);const actual=importFormData(source(),reviewed);
  assert.deepEqual(actual,reviewed);assert.equal(JSON.stringify(reviewed),before);
 });
+test('a saved untouched mailing address prefills only its street without rewriting reviewed fields',()=>{
+ for(const formatted of [false,true]){
+  const mailing='123 Synthetic Street, Apt 4, Metairie, LA 70001, USA';
+  const p=source({address:formatted?'123 Synthetic Street, Apt 4':mailing,formattedAddress:formatted?mailing:'',city:'Metairie'});
+  const reviewed=Object.freeze({name:'Reviewed',address:mailing,city:'Kenner',state:'LA',zip:'70065',description:'Reviewed notes',unlockLimit:'2'});
+  const before=JSON.stringify(p);
+  assert.deepEqual(importFormData(p,reviewed),{...reviewed,address:'123 Synthetic Street, Apt 4'});
+  assert.equal(reviewed.address,mailing);assert.equal(JSON.stringify(p),before);
+ }
+});
+test('saved address choices and explicit clearing are not replaced from source',()=>{
+ const p=source({address:'123 Raw Street',formattedAddress:'456 Verified Street, Metairie, LA 70001, USA',city:'Metairie'});
+ for(const address of ['',p.address,'789 Reviewed Street, Building B, Apt 4']){
+  const reviewed={address,city:'Kenner',description:'Reviewed notes',unlockLimit:'3'};
+  assert.deepEqual(importFormData(p,reviewed),reviewed);
+ }
+});
 test('a saved blank description prefills transferred notes without rewriting the saved review',()=>{
  const p=source({inquiryNotes:'Inquiry\n第二行',estimatorNotes:'Estimator',salesNotes:'Sales'});
  const reviewed=Object.freeze({name:'Reviewed',address:'456 Reviewed Street, Building B, Apt 4',city:'Kenner',description:'',unlockLimit:'2'});
