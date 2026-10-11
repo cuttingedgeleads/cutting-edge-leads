@@ -147,6 +147,7 @@ test('inbox has one Create lead action into the existing tab, without workflow f
   assert.equal((html.match(/>Create lead<\/a>/g) || []).length, 1);
   assert.match(html, /José 🌿/);
   assert.match(html, /Unicode 内部/);
+  assert.match(html, /<button[^>]*>Delete<\/button>/, 'each import tile has a Delete control');
 });
 
 test('import carries source notes into the editable description for explicit review', async () => {

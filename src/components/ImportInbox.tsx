@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePrivateImport } from './ImportState';
+import { importsChanged, usePrivateImport } from './ImportState';
+import { DeleteImportButton } from './DeleteImportButton';
 export type PrivateImport = {
   id: string;
   status: string;
@@ -12,7 +13,7 @@ export type PrivateImport = {
 };
 export function ImportInbox() {
   const [offset, setOffset] = useState(0);
-  const { data, error, reload } = usePrivateImport<{
+  const { data, error, reload, invalidate, owner } = usePrivateImport<{
     waitingCount: number;
     total: number;
     items: PrivateImport[];
@@ -35,7 +36,7 @@ export function ImportInbox() {
               const p = JSON.parse(r.originalPayload);
               return (
                 <article
-                  key={r.id}
+                  key={`${owner}:${r.id}`}
                   className="rounded-xl border bg-white p-4 space-y-2 break-words"
                 >
                   <strong>
@@ -57,11 +58,19 @@ export function ImportInbox() {
                         .join('\n') || 'No job context provided'
                     ).slice(0, 600)}
                   </p>
+                  <div className="flex flex-wrap items-center gap-2">
                   <Link
                     prefetch={false}
                     href={`/admin/leads?importId=${encodeURIComponent(r.id)}`}
                     className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 font-medium text-white"
                   >Create lead</Link>
+                  <DeleteImportButton id={r.id} version={r.version}
+                    onUnavailable={invalidate} onConflict={importsChanged}
+                    onDeleted={() => {
+                      if (data.items.length === 1 && offset > 0) setOffset((n) => Math.max(0, n - 25));
+                      importsChanged();
+                    }} />
+                  </div>
                 </article>
               );
             })}

@@ -13,7 +13,7 @@ const files=readdirSync(join(cwd,'tests')).filter(f=>/^import-.*\.test\.ts$/.tes
 let args;
 if(mode==='unit')args=['--import','tsx','--test','--test-reporter=tap',...files.map(f=>'tests/'+f)];
 else if(mode==='tsc')args=['node_modules/typescript/bin/tsc','--noEmit'];
-else if(mode==='db')args=['--import','tsx','--test','--test-reporter=tap',...readdirSync(join(cwd,'tests')).filter(f=>/^import-.*db\.test\.ts$/.test(f)).map(f=>'tests/'+f)];
+else if(mode==='db')args=['--import','tsx','--test','--test-concurrency=1','--test-reporter=tap',...readdirSync(join(cwd,'tests')).filter(f=>/^import-.*db\.test\.ts$/.test(f)).map(f=>'tests/'+f)];
 else if(mode==='migrate')args=['node_modules/prisma/build/index.js','migrate','deploy'];
 else if(mode==='generate')args=['node_modules/prisma/build/index.js','generate'];
 else if(mode==='install-browsers')args=['node_modules/playwright/cli.js','install','chromium','webkit'];

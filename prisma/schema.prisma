@@ -166,6 +166,7 @@ model StudioImport {
   lastSaveVersion Int?
   lastSaveHash String?
   leadId String? @unique
+  deletedAt DateTime?
 
   notificationStatus String @default("pending")
   notificationLease String?

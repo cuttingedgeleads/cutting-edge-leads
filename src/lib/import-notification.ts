@@ -11,6 +11,7 @@ export async function attemptImportNotification(
   const claim = await db.studioImport.updateMany({
     where: {
       id,
+      deletedAt: null,
       notificationStatus: { not: 'sent' },
       OR: [
         { notificationLeaseUntil: null },
@@ -35,14 +36,14 @@ export async function attemptImportNotification(
       },
     });
     status =
-      r.recipient.role === 'ADMIN' && r.recipient.pushNotifications
+      !r.deletedAt && r.recipient.role === 'ADMIN' && r.recipient.pushNotifications
         ? await send(r.recipientId, id)
         : 'unavailable';
   } catch {
     /* Receipt survives unavailable transport; retry after durable lease. */
   }
   await db.studioImport.updateMany({
-    where: { id, notificationLease: lease },
+    where: { id, deletedAt: null, notificationLease: lease },
     data: {
       notificationStatus: status,
       notificationLease: null,

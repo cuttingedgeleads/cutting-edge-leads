@@ -70,6 +70,15 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  for(const label of ['Waiting','Saved requests','Published'])assert.equal(await page.getByRole('button',{name:label,exact:true}).count(),0);
  assert.equal(await create.count(),1);
  await capture(page,name,'inbox');
+ const deleteButton=page.getByRole('button',{name:'Delete',exact:true});await deleteButton.waitFor();
+ let cancelled=false;const beforeCancel=await db.studioImport.findUniqueOrThrow({where:{id:receipt.importId}});
+ page.once('dialog',async dialog=>{assert.equal(dialog.type(),'confirm');assert.match(dialog.message(),/Are you sure you want to delete this import/);cancelled=true;await dialog.dismiss();});
+ await deleteButton.click();assert.equal(cancelled,true);
+ assert.deepEqual(await db.studioImport.findUniqueOrThrow({where:{id:receipt.importId}}),beforeCancel,'Cancel must not delete or save');
+ assert.equal((await context.request.delete(origin+detail,{headers:{origin:'https://unsafe.invalid'},data:{version:0}})).status(),403);
+ assert.equal((await fetch(origin+detail,{method:'DELETE',headers:{origin,'content-type':'application/json'},body:'{"version":0}'})).status,404);
+ for(const data of [{},{version:0,extra:true},{version:-1},{version:0.5},{version:'0'}])assert.equal((await context.request.delete(origin+detail,{headers:{origin},data})).status(),400);
+
  const bounds=await create.boundingBox();assert.ok(bounds&&bounds.height>=44);
  await create.click();await publish.waitFor();
  await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('input[name=name]')?.value==='Synthetic Person');
@@ -133,6 +142,7 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  await db.user.update({where:{id:user.id},data:{role:'CONTRACTOR'}});
  for(const path of [detail,'/api/admin/imports','/api/admin/imports/count']){const denied=await context.request.get(origin+path);assert.equal(denied.status(),404);assert.match(denied.headers()['cache-control'],/no-store/);}
  assert.equal((await context.request.post(origin+detail,{headers:{origin},data:{version:1,data:saved.reviewedData}})).status(),404);
+ assert.equal((await context.request.delete(origin+'/api/admin/imports/'+third.importId,{headers:{origin},data:{version:0}})).status(),404);
  const deniedPublish=await context.request.post(origin+'/api/leads/create',{headers:{origin},multipart:{importId:receipt.importId,importVersion:'1'}});assert.ok([401,404].includes(deniedPublish.status()));
  await page.evaluate(()=>window.dispatchEvent(new Event('imports-changed')));await page.locator('form [name=description]').waitFor({state:'hidden'});assert.equal(await page.getByRole('heading',{name:'Private Studio information'}).count(),0);
  await db.user.update({where:{id:user.id},data:{role:'ADMIN'}});
@@ -140,6 +150,31 @@ for(const [name,engine] of Object.entries({chromium,webkit}))test(`${name}: real
  assert.equal(await page.locator('select[name=unlockLimit]').inputValue(),'1');assert.equal(await page.locator('input[name=importId]').count(),0);assert.deepEqual(await formShape(),importedShape,'Imported and ordinary Create Lead use identical fields and options');
  for(const [field,value] of Object.entries({name:'Synthetic Normal',email,phone:'5550101234',address:'456 Synthetic Street',city:'Synthetic',state:'LA',zip:'70000',price:'12',description:'Synthetic normal form regression fixture'}))await page.locator(`form [name=${field}]`).fill(value);
  await page.locator('select[name=jobType]').selectOption({index:1});const normalResponse=page.waitForResponse(r=>r.url()===origin+'/api/leads/create'&&r.request().method()==='POST');await page.getByRole('button',{name:'Publish lead',exact:true}).click();const normal=await normalResponse;assert.equal(normal.status(),200);const normalResult=await normal.json();normalLeadIds.push(normalResult.leadId);assert.equal(await db.lead.count(),3);assert.equal(await db.studioImport.count({where:{recipientId:user.id}}),3);await page.waitForFunction(()=>document.querySelector<HTMLInputElement>('input[name=name]')?.value==='');
- console.log(name,'acceptance complete');
+
+ // Real Delete workflow: stale-version rejection, failure retention, lost ACK and explicit retry.
+ await page.goto(origin+'/admin/imports',{waitUntil:'domcontentloaded'});await deleteButton.waitFor();
+ const thirdDetail='/api/admin/imports/'+third.importId;
+ assert.equal((await context.request.post(origin+thirdDetail,{headers:{origin},data:{version:0,data:savedData}})).status(),200);
+ async function confirmDelete(){page.once('dialog',async dialog=>{assert.equal(dialog.type(),'confirm');assert.match(dialog.message(),/original Studio record will not be deleted/);await dialog.accept();});await deleteButton.click();}
+ const conflictRead=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/admin/imports'&&r.request().method()==='GET');
+ await confirmDelete();await page.getByRole('alert').filter({hasText:'This import changed'}).waitFor();await conflictRead;
+ assert.equal((await db.studioImport.findUniqueOrThrow({where:{id:third.importId}})).deletedAt,null);
+ await page.route('**'+thirdDetail,route=>route.request().method()==='DELETE'?route.fulfill({status:503,contentType:'application/json',body:'{"error":"Synthetic deletion outage"}'}):route.continue());
+ await confirmDelete();await page.getByRole('alert').filter({hasText:'Synthetic deletion outage'}).waitFor();
+ assert.equal((await db.studioImport.findUniqueOrThrow({where:{id:third.importId}})).deletedAt,null);await page.unroute('**'+thirdDetail);
+ await page.route('**'+thirdDetail,async route=>{if(route.request().method()==='DELETE'){assert.deepEqual(route.request().postDataJSON(),{version:1});const accepted=await route.fetch();assert.equal(accepted.status(),200);await route.abort('failed');}else await route.continue();});
+ await confirmDelete();await page.getByRole('alert').filter({hasText:'Deletion was not confirmed'}).waitFor();
+ const deleted=await db.studioImport.findUniqueOrThrow({where:{id:third.importId}});assert.ok(deleted.deletedAt);assert.equal(deleted.version,2);assert.equal(deleted.originalPayload,raw3);
+ await page.unroute('**'+thirdDetail);await confirmDelete();await page.getByText('No imports to create.').waitFor();await page.getByTestId('import-count').filter({hasText:'0'}).waitFor();
+ assert.equal((await context.request.get(origin+thirdDetail)).status(),404);
+ assert.equal(await db.lead.count(),3,'deleting an import leaves published leads unchanged');
+ const replay=await fetch(intake,{method:'POST',headers:signed(raw3),body:raw3});assert.equal(replay.status,200);assert.equal((await replay.json()).importId,third.importId);
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByText('No imports to create.').waitFor();
+ // Last tile on a later page returns to a populated page, never a stranded empty offset.
+ await db.studioImport.createMany({data:Array.from({length:26},(_,i)=>({source:p.source,environment:p.environment,sourceRecordId:randomUUID(),transferId:randomUUID(),recipientId:user.id,originalPayload:JSON.stringify({...p,customerName:'Synthetic pagination '+i}),payloadSha256:'synthetic-pagination-only'}))});
+ await page.reload({waitUntil:'domcontentloaded'});await page.getByText('26 imports',{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Next',exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll('main article').length===1);await confirmDelete();
+ await page.getByText('25 imports',{exact:true}).waitFor();await page.waitForFunction(()=>document.querySelectorAll('main article').length===25);assert.ok(await page.getByRole('button',{name:'Previous',exact:true}).isDisabled());
+ console.log(name,'acceptance complete including import deletion');
  }finally{try{await browser?.close();}finally{try{if(userId){const rows=await db.studioImport.findMany({where:{recipientId:userId}});const leads=[...normalLeadIds,...rows.flatMap(r=>r.leadId?[r.leadId]:[])];await db.studioImport.deleteMany({where:{recipientId:userId}});await db.leadPhoto.deleteMany({where:{leadId:{in:leads}}});await db.lead.deleteMany({where:{id:{in:leads}}});await db.leadAuthSession.deleteMany({where:{userId:userId}});await db.auditLog.deleteMany({where:{email,userId}});await db.user.delete({where:{id:userId}});}}finally{await db.$disconnect();}}}
 });
