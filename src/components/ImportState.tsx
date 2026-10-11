@@ -113,14 +113,14 @@ export function usePrivateImport<T>(url: string) {
 }
 
 export function ImportBadge() {
-  const { data, error, reload } = usePrivateImport<{ waitingCount: number }>(
+  const { data, error, reload } = usePrivateImport<{ waitingCount: number; pendingCount: number }>(
     '/api/admin/imports/count',
   );
   return (
     <span
       data-testid="import-count"
       className="ml-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-slate-900 px-1.5 text-xs font-semibold text-white"
-      title={error || 'Waiting imports'}
+      title={error || 'Imports ready to create'}
       onClick={
         error
           ? (event) => {
@@ -132,11 +132,11 @@ export function ImportBadge() {
       aria-label={
         error
           ? 'Import count unavailable; retry'
-          : `${data?.waitingCount ?? 'Loading'} waiting imports`
+          : `${data?.pendingCount ?? 'Loading'} imports ready to create`
       }
     >
       {' '}
-      {error ? '!' : (data?.waitingCount ?? '…')}
+      {error ? '!' : (data?.pendingCount ?? '…')}
     </span>
   );
 }

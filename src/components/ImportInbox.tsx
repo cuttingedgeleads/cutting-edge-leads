@@ -11,39 +11,16 @@ export type PrivateImport = {
   leadId: string | null;
 };
 export function ImportInbox() {
-  const [status, setStatus] = useState('waiting'),
-    [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(0);
   const { data, error, reload } = usePrivateImport<{
     waitingCount: number;
     total: number;
     items: PrivateImport[];
-  }>(`/api/admin/imports?status=${status}&offset=${offset}`);
+  }>(`/api/admin/imports?status=pending&offset=${offset}`);
   return (
     <section className="space-y-4">
       <h1 className="text-xl font-semibold">Import</h1>
-      <p>
-        Private requests from Studio. Opening an import does not save or publish
-        it.
-      </p>
-      <div className="flex flex-wrap gap-3">
-        {[
-          ['waiting', 'Waiting'],
-          ['saved', 'Saved requests'],
-          ['published', 'Published'],
-        ].map(([key, label]) => (
-          <button
-            className="rounded border px-3 py-2"
-            aria-pressed={status === key}
-            key={key}
-            onClick={() => {
-              setStatus(key);
-              setOffset(0);
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <p>Choose Create lead to load an import into the Create Lead tab.</p>
       {error ? (
         <p role="alert">
           {error} <button onClick={reload}>Retry</button>
@@ -52,24 +29,15 @@ export function ImportInbox() {
         <p role="status">Loading imports…</p>
       ) : (
         <>
-          <p>
-            {data.total}{' '}
-            {status === 'waiting'
-              ? 'waiting imports'
-              : status === 'saved'
-                ? 'saved requests'
-                : 'published requests'}
-          </p>
-          {!data.items.length && <p>No {status} requests.</p>}
+          <p>{data.total} imports</p>
+          {!data.items.length && <p>No imports to create.</p>}
           <div className="grid gap-3 sm:grid-cols-2">
             {data.items.map((r) => {
               const p = JSON.parse(r.originalPayload);
               return (
-                <Link
-                  prefetch={false}
+                <article
                   key={r.id}
-                  href={`/admin/imports/${r.id}`}
-                  className="block rounded-xl border bg-white p-4 space-y-2 break-words"
+                  className="rounded-xl border bg-white p-4 space-y-2 break-words"
                 >
                   <strong>
                     Customer: {p.customerName || 'Name not provided'}
@@ -90,7 +58,12 @@ export function ImportInbox() {
                         .join('\n') || 'No job context provided'
                     ).slice(0, 600)}
                   </p>
-                </Link>
+                  <Link
+                    prefetch={false}
+                    href={`/admin/leads?importId=${encodeURIComponent(r.id)}`}
+                    className="inline-flex min-h-11 items-center justify-center rounded-lg bg-slate-900 px-4 py-2 font-medium text-white"
+                  >Create lead</Link>
+                </article>
               );
             })}
           </div>

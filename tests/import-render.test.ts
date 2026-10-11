@@ -95,7 +95,7 @@ async function renderer() {
           export const importsChanged=()=>{};
           export function usePrivateImport(url){return {owner:'synthetic', data:url.includes('?')?{waitingCount:1,total:1,items:[record]}:record};}`
               : args.path.endsWith('LeadForm')
-                ? 'export const LeadForm=()=>null;'
+                ? `const React=require('react'); export const LeadForm=({importRequest})=>React.createElement('output',{'data-prefill':JSON.stringify(importRequest.data)},importRequest.data.name);`
                 : `const React=require('react'); export default function Link({children,prefetch,...props}){return React.createElement('a',props,children);}`,
           }));
         },
@@ -136,6 +136,28 @@ test('actual tiles/editor render exact accepted Unicode bytes; signed leading BO
   // Discriminate the real historical failure, not merely an arbitrary invalid body.
   for (const component of render(bom)) assert.throws(component, SyntaxError);
   assert.throws(() => signedVerify(bom), { status: 400 });
+});
+
+test('inbox has one Create lead action into the existing tab, without workflow filters', async () => {
+  const render = await renderer();
+  const [inbox] = render(body());
+  const html = inbox();
+  assert.match(html, /href="\/admin\/leads\?importId=synthetic"[^>]*>Create lead<\/a>/);
+  assert.doesNotMatch(html, />Waiting<|>Saved requests<|>Published</);
+  assert.equal((html.match(/>Create lead<\/a>/g) || []).length, 1);
+  assert.match(html, /José 🌿/);
+  assert.match(html, /Unicode 内部/);
+});
+
+test('import immediately supplies the existing create form, retaining private notes outside its description', async () => {
+  const render = await renderer();
+  const [, editor] = render(body());
+  const html = editor();
+  assert.match(html, /data-prefill=/);
+  assert.match(html, /&quot;name&quot;:&quot;José 🌿&quot;/);
+  assert.match(html, /&quot;description&quot;:&quot;&quot;/);
+  assert.match(html, /Unicode 内部/);
+  assert.doesNotMatch(html, />Save request<|>Review &amp; publish</);
 });
 
 test('correctly signed malformed UTF-8 remains rejected', () => {

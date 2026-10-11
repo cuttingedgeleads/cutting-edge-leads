@@ -149,3 +149,18 @@ Uploads and generated workers are excluded from precaching.
 See `docs/auth-dependency-audit.md` for the remaining audit paths and applicability.
 The gate is implementation evidence, not independent review, physical-device proof,
 or authorization to deploy or change live accounts.
+
+## Studio imports → Create Lead
+
+The Import tab is one queue of unfinished imports, including previously saved
+requests. Each tile has one **Create lead** action. It opens the existing
+**Create Lead** tab and fills the imported contact/address fields (or the last
+reviewed values). Navigation and prefill are read-only: the import is not consumed
+and no public lead is created until **Publish lead** is explicitly submitted.
+
+Studio notes stay visible as private context, never silently copied into the
+public description. Source photos remain in Studio. Publication links the lead
+and immutable import receipt in one version-checked transaction. Lost
+acknowledgements and concurrent retries return the same lead. Existing import
+notification/deep links redirect to the same Create Lead tab after authentication.
+The prior private-save API remains compatible; no database migration is required.

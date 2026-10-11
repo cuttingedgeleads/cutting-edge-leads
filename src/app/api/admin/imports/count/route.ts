@@ -4,11 +4,11 @@ import { importJson, importFailure } from '@/lib/import-http';
 export async function GET() {
   try {
     const recipientId = await importUser();
-    return importJson({
-      waitingCount: await prisma.studioImport.count({
-        where: { recipientId, status: 'waiting' },
-      }),
-    });
+    const [waitingCount, pendingCount] = await prisma.$transaction([
+      prisma.studioImport.count({ where: { recipientId, status: 'waiting' } }),
+      prisma.studioImport.count({ where: { recipientId, status: { in: ['waiting', 'saved'] } } }),
+    ], { isolationLevel: 'RepeatableRead' });
+    return importJson({ waitingCount, pendingCount });
   } catch (e) {
     return importFailure(e);
   }
