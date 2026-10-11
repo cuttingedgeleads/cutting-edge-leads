@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       assertImportOrigin(request);
       const receipt = await getImport(prisma, session.user.id, importId);
       if (receipt.leadId) return importJson({success:true,leadId:receipt.leadId});
-      if (receipt.status !== 'saved' || !Number.isInteger(importVersion) || receipt.version !== importVersion) throw new ImportError(409,'Save request and reload before publishing.');
+      if (!['waiting', 'saved'].includes(receipt.status) || !/^\d+$/.test(String(formData.get('importVersion') ?? '')) || !Number.isSafeInteger(importVersion) || receipt.version !== importVersion) throw new ImportError(409,'Import changed. Reopen it before publishing.');
     }
     const testMode = await getTestMode();
     

@@ -116,21 +116,22 @@ export async function listImports(
 ) {
   await admin(db, userId);
   if (
-    !['waiting', 'saved', 'published'].includes(status) ||
+    !['pending', 'waiting', 'saved', 'published'].includes(status) ||
     !Number.isInteger(offset) ||
     offset < 0
   )
     throw new ImportError(400, 'Invalid list');
+  const where = { recipientId: userId, status: status === 'pending' ? { in: ['waiting', 'saved'] } : status };
   return db.$transaction(
     async (tx) => ({
       waitingCount: await tx.studioImport.count({
         where: { recipientId: userId, status: 'waiting' },
       }),
       total: await tx.studioImport.count({
-        where: { recipientId: userId, status },
+        where,
       }),
       items: await tx.studioImport.findMany({
-        where: { recipientId: userId, status },
+        where,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: offset,
         take: 25,
@@ -191,12 +192,17 @@ export async function publishImport(
           include: { photos: true },
         }),
       };
-    if (r.status !== 'saved' || r.version !== version)
-      throw new ImportError(409, 'Save request and reload before publishing.');
+    if (!['waiting', 'saved'].includes(r.status) || !Number.isSafeInteger(version) || r.version !== version)
+      throw new ImportError(409, 'Import changed. Reopen it before publishing.');
     const lead = await tx.lead.create({ data, include: { photos: true } });
     await tx.studioImport.update({
       where: { id },
-      data: { status: 'published', leadId: lead.id, version: { increment: 1 } },
+      data: {
+        status: 'published', leadId: lead.id, version: { increment: 1 },
+        reviewedData: Object.fromEntries(Object.keys(reviewLimits).map(key => [
+          key, String(data[key as keyof Prisma.LeadCreateInput] ?? ''),
+        ])),
+      },
     });
     return { created: true, lead };
   });

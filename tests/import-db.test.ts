@@ -109,6 +109,40 @@ const p = () => ({
   salesNotes: '',
   sourcePhotoCount: 0,
 });
+test('unfinished import queue retains waiting and previously saved requests until explicit publication', async () => {
+  const owner = await db.user.create({data:{email:randomUUID()+'@example.invalid',name:'Queue QA',passwordHash:'not-a-password',role:'ADMIN'}});
+  const leadIds: string[] = [];
+  try {
+    const intake = async () => {const payload=p(),raw=JSON.stringify(payload);return (await receiveImport(db,payload,raw,createHash('sha256').update(raw).digest('hex'),owner.email)).record;};
+    const fresh=await intake(), saved=await intake();
+    await saveImport(db,owner.id,saved.id,0,{...prefillImport(p()),name:'Previously reviewed name'});
+    const before=await db.studioImport.findMany({where:{recipientId:owner.id},orderBy:{id:'asc'}});
+    const queue=await listImports(db,owner.id,'pending',0);
+    assert.equal(queue.total,2);
+    assert.deepEqual(new Set(queue.items.map(r=>r.id)),new Set([fresh.id,saved.id]));
+    assert.deepEqual(await db.studioImport.findMany({where:{recipientId:owner.id},orderBy:{id:'asc'}}),before,'opening the queue must not save or consume imports');
+    const leadData={name:'Explicitly reviewed',email:'',phone:'5550101234',address:'123 Synthetic Street',city:'Synthetic',state:'LA',zip:'70000',description:'Human public description',jobType:'Grass Maintenance',price:12,unlockLimit:1,isTestLead:true};
+    await assert.rejects(publishImport(db,owner.id,fresh.id,1,leadData),{status:409});
+    const published=await Promise.all(Array.from({length:4},()=>publishImport(db,owner.id,fresh.id,0,leadData)));
+    leadIds.push(...new Set(published.map(r=>r.lead.id)));
+    assert.equal(leadIds.length,1);
+    assert.equal(published.filter(r=>r.created).length,1);
+    const after=await getImport(db,owner.id,fresh.id);
+    assert.equal(after.status,'published');
+    assert.equal(after.originalPayload,fresh.originalPayload);
+    assert.equal(after.version,1);
+    const remaining=await listImports(db,owner.id,'pending',0);
+    assert.equal(remaining.total,1);
+    assert.equal(remaining.items[0].id,saved.id);
+    assert.equal((remaining.items[0].reviewedData as {name:string}).name,'Previously reviewed name');
+    assert.equal((await listImports(db,owner.id,'published',0)).total,1,'historical API remains available');
+  } finally {
+    await db.studioImport.deleteMany({where:{recipientId:owner.id}});
+    await db.lead.deleteMany({where:{id:{in:leadIds}}});
+    await db.user.delete({where:{id:owner.id}});
+  }
+});
+
 test('database atomic receipt/scope/save/version/publication and replay', async () => {
   const a = await db.user.create({
     data: {

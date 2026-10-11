@@ -3,8 +3,7 @@ import { getSession } from '@/lib/session';
 import { prisma } from '@/lib/prisma';
 import { getImport } from '@/lib/import-store';
 import { safeImportReturn } from '@/lib/import-navigation';
-import { AdminHeader } from '@/components/AdminHeader';
-import { ImportRequest } from '@/components/ImportRequest';
+
 export const dynamic = 'force-dynamic';
 export default async function Page({
   params,
@@ -22,12 +21,5 @@ export default async function Page({
   } catch {
     notFound();
   }
-  return (
-    <div className="min-h-screen">
-      <AdminHeader name={s.user.name} />
-      <main className="mx-auto max-w-5xl px-4 py-8">
-        <ImportRequest id={id} />
-      </main>
-    </div>
-  );
+  redirect(`/admin/leads?importId=${encodeURIComponent(id)}`);
 }

@@ -6,4 +6,4 @@ test('Import count is rendered as a visually distinct numeric badge',()=>{
  assert.match(badge,/className="[^"]*bg-slate-900/);
  assert.match(badge,/className="[^"]*text-white/);
 });
-test('UI routes and private service-worker routing are wired',()=>{assert.match(readFileSync('src/components/ImportInbox.tsx','utf8'),/Saved requests/);assert.match(readFileSync('src/components/ImportRequest.tsx','utf8'),/Save request/);assert.match(readFileSync('src/worker/sw.js','utf8'),/admin.*imports/);assert.match(readFileSync('src/app/login/page.tsx','utf8'),/safeImportReturn/);});
+test('UI routes and private service-worker routing are wired',()=>{assert.match(readFileSync('src/components/ImportInbox.tsx','utf8'),/Create lead/);assert.match(readFileSync('src/components/ImportRequest.tsx','utf8'),/<LeadForm importRequest=/);assert.match(readFileSync('src/worker/sw.js','utf8'),/admin.*imports/);assert.match(readFileSync('src/app/login/page.tsx','utf8'),/safeImportReturn/);});
